@@ -14,6 +14,7 @@ import { ForgotPasswordPage } from './components/ForgotPasswordPage';
 import { TermsOfServicePage } from './components/TermsOfServicePage';
 import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
 import { Toaster } from './components/ui/sonner';
+import { authAPI, chatAPI } from './services/api';
 
 export default function App() {
   const [isLightTheme, setIsLightTheme] = useState(false);
@@ -69,18 +70,40 @@ export default function App() {
     }
   }, [isLightTheme]);
 
-  const handleLogin = (email: string, password: string) => {
-    // Simular autenticação - em produção, fazer chamada API real
-    console.log('Login com:', email);
-    setIsAuthenticated(true);
-    setShowSignUp(false);
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      const result = await authAPI.login(email, password);
+      
+      if (result.success) {
+        console.log('Login bem-sucedido:', result.data);
+        setIsAuthenticated(true);
+        setShowSignUp(false);
+      } else {
+        console.error('Falha no login:', result.error);
+        // Tratar erro de login de forma mais específica
+      }
+    } catch (error) {
+      console.error('Erro na requisição de login:', error);
+      // Tratar erro de rede
+    }
   };
 
-  const handleSignUp = (name: string, email: string, password: string) => {
-    // Simular criação de conta - em produção, fazer chamada API real
-    console.log('Criando conta para:', name, email);
-    setIsAuthenticated(true);
-    setShowSignUp(false);
+  const handleSignUp = async (name: string, email: string, password: string) => {
+    try {
+      const result = await authAPI.signup(name, email, password);
+      
+      if (result.success) {
+        console.log('Cadastro bem-sucedido:', result.data);
+        setIsAuthenticated(true);
+        setShowSignUp(false);
+      } else {
+        console.error('Falha no cadastro:', result.error);
+        // Tratar erro de cadastro de forma mais específica
+      }
+    } catch (error) {
+      console.error('Erro na requisição de cadastro:', error);
+      // Tratar erro de rede
+    }
   };
 
   const handleLogout = () => {
@@ -164,7 +187,7 @@ export default function App() {
     'Construa seu assistente personalizado'
   ];
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (message.trim()) {
       setMessages([...messages, {
         id: messages.length + 1,
@@ -174,14 +197,35 @@ export default function App() {
       setMessage('');
       setIsThinking(true);
       
-      setTimeout(() => {
+      try {
+        // Chamada API real para enviar mensagem e receber resposta do assistente
+        const result = await chatAPI.sendMessage(message);
+        
+        if (result.success) {
+          setIsThinking(false);
+          setMessages(prev => [...prev, {
+            id: prev.length + 1,
+            type: 'assistant',
+            content: result.data?.message || 'Resposta do assistente',
+          }]);
+        } else {
+          console.error('Falha ao enviar mensagem:', result.error);
+          setIsThinking(false);
+          setMessages(prev => [...prev, {
+            id: prev.length + 1,
+            type: 'assistant',
+            content: 'Desculpe, ocorreu um erro ao processar sua mensagem.',
+          }]);
+        }
+      } catch (error) {
+        console.error('Erro na requisição de mensagem:', error);
         setIsThinking(false);
         setMessages(prev => [...prev, {
           id: prev.length + 1,
           type: 'assistant',
-          content: 'Entendi. Vamos explorar isso juntos. Você já tentou algo antes nessa área? O que funcionou e o que não funcionou?',
+          content: 'Desculpe, ocorreu um erro de conexão.',
         }]);
-      }, 2000);
+      }
     }
   };
 
