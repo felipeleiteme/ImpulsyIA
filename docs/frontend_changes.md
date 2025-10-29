@@ -473,3 +473,18 @@ After these changes:
 2. **Frontend**: Runs on `http://localhost:3000` with the proxy configured to forward API requests to the backend
 
 This setup allows the frontend to communicate with the backend using the same `/api/*` endpoints, making the transition from development to production deployment straightforward.
+
+## 7. Startup Script
+
+A convenient startup script (`start.sh`) has been added to simplify running both frontend and backend simultaneously:
+
+```bash
+./start.sh
+```
+
+This script will:
+- Start the backend server on port 8000
+- Start the frontend server on port 3000 (or next available port)
+- Automatically handle the integration between frontend and backend
+- Display logs for both services
+- Gracefully shut down both services when interrupted with Ctrl+C
