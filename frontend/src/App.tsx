@@ -14,7 +14,8 @@ import { ForgotPasswordPage } from './components/ForgotPasswordPage';
 import { TermsOfServicePage } from './components/TermsOfServicePage';
 import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
 import { Toaster } from './components/ui/sonner';
-import { authAPI, chatAPI } from './services/api';
+import { supabase } from './services/supabase';
+import { chatAPI } from './services/api';
 
 export default function App() {
   const [isLightTheme, setIsLightTheme] = useState(false);
@@ -70,49 +71,53 @@ export default function App() {
     }
   }, [isLightTheme]);
 
-  const handleLogin = async (email: string, password: string) => {
-    try {
-      const result = await authAPI.login(email, password);
-      
-      if (result.success) {
-        console.log('Login bem-sucedido:', result.data);
-        setIsAuthenticated(true);
-        setShowSignUp(false);
-      } else {
-        console.error('Falha no login:', result.error);
-        // Tratar erro de login de forma mais específica
-      }
-    } catch (error) {
-      console.error('Erro na requisição de login:', error);
-      // Tratar erro de rede
-    }
-  };
+  useEffect(() => {
+    const checkCurrentSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-  const handleSignUp = async (name: string, email: string, password: string) => {
-    try {
-      const result = await authAPI.signup(name, email, password);
-      
-      if (result.success) {
-        console.log('Cadastro bem-sucedido:', result.data);
+      if (session) {
         setIsAuthenticated(true);
-        setShowSignUp(false);
+        setJourneyStarted(false);
+        if (chats.length > 0) {
+          setCurrentChatId(chats[0].id);
+        }
       } else {
-        console.error('Falha no cadastro:', result.error);
-        // Tratar erro de cadastro de forma mais específica
+        setIsAuthenticated(false);
+        setJourneyStarted(false);
       }
-    } catch (error) {
-      console.error('Erro na requisição de cadastro:', error);
-      // Tratar erro de rede
-    }
-  };
+    };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setJourneyStarted(false);
-    setShowProfile(false);
-    setShowSubscription(false);
-    setShowCheckout(false);
-    setIsSidebarOpen(false);
+    checkCurrentSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const authenticated = !!session;
+      setIsAuthenticated(authenticated);
+
+      if (session) {
+        setJourneyStarted(false);
+        if (chats.length > 0) {
+          setCurrentChatId(chats[0].id);
+        }
+      } else {
+        setJourneyStarted(false);
+        setShowProfile(false);
+        setShowSubscription(false);
+        setShowCheckout(false);
+        setIsSidebarOpen(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [chats]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setShowSignUp(false);
     setShowForgotPassword(false);
     setShowTermsOfService(false);
@@ -126,51 +131,28 @@ export default function App() {
     setShowPrivacyPolicy(false);
   };
 
-  // Se não estiver autenticado, mostrar página de login, sign up, forgot password, terms ou privacy
-  if (!isAuthenticated) {
+  const renderAuthPages = () => {
+    let page: JSX.Element;
+
     if (showTermsOfService) {
-      return (
-        <TermsOfServicePage
-          isLightTheme={isLightTheme}
-          onBack={handleBackToAuth}
-        />
-      );
-    }
-
-    if (showPrivacyPolicy) {
-      return (
-        <PrivacyPolicyPage
-          isLightTheme={isLightTheme}
-          onBack={handleBackToAuth}
-        />
-      );
-    }
-
-    if (showForgotPassword) {
-      return (
-        <ForgotPasswordPage
-          isLightTheme={isLightTheme}
-          onBackToLogin={handleBackToAuth}
-        />
-      );
-    }
-    
-    if (showSignUp) {
-      return (
+      page = <TermsOfServicePage isLightTheme={isLightTheme} onBack={handleBackToAuth} />;
+    } else if (showPrivacyPolicy) {
+      page = <PrivacyPolicyPage isLightTheme={isLightTheme} onBack={handleBackToAuth} />;
+    } else if (showForgotPassword) {
+      page = <ForgotPasswordPage isLightTheme={isLightTheme} onBackToLogin={handleBackToAuth} />;
+    } else if (showSignUp) {
+      page = (
         <SignUpPage
           isLightTheme={isLightTheme}
-          onSignUp={handleSignUp}
           onBackToLogin={handleBackToAuth}
           onShowTerms={() => setShowTermsOfService(true)}
           onShowPrivacy={() => setShowPrivacyPolicy(true)}
         />
       );
-    }
-    
-    return (
-      <LoginPage 
+    } else {
+      page = (
+        <LoginPage
         isLightTheme={isLightTheme}
-        onLogin={handleLogin}
         onToggleTheme={() => setIsLightTheme(!isLightTheme)}
         onShowSignUp={() => setShowSignUp(true)}
         onShowForgotPassword={() => setShowForgotPassword(true)}
@@ -178,6 +160,22 @@ export default function App() {
         onShowPrivacy={() => setShowPrivacyPolicy(true)}
       />
     );
+    }
+  
+    return (
+      <>
+        <Toaster
+          theme={isLightTheme ? 'light' : 'dark'}
+          position="top-right"
+          richColors
+        />
+        {page}
+      </>
+    );
+  };
+
+  if (!isAuthenticated) {
+    return renderAuthPages();
   }
 
   const features = [
@@ -188,44 +186,42 @@ export default function App() {
   ];
 
   const handleSendMessage = async () => {
-    if (message.trim()) {
-      setMessages([...messages, {
-        id: messages.length + 1,
-        type: 'user',
-        content: message,
-      }]);
-      setMessage('');
-      setIsThinking(true);
-      
-      try {
-        // Chamada API real para enviar mensagem e receber resposta do assistente
-        const result = await chatAPI.sendMessage(message);
-        
-        if (result.success) {
-          setIsThinking(false);
-          setMessages(prev => [...prev, {
-            id: prev.length + 1,
-            type: 'assistant',
-            content: result.data?.message || 'Resposta do assistente',
-          }]);
-        } else {
-          console.error('Falha ao enviar mensagem:', result.error);
-          setIsThinking(false);
-          setMessages(prev => [...prev, {
-            id: prev.length + 1,
-            type: 'assistant',
-            content: 'Desculpe, ocorreu um erro ao processar sua mensagem.',
-          }]);
-        }
-      } catch (error) {
-        console.error('Erro na requisição de mensagem:', error);
-        setIsThinking(false);
-        setMessages(prev => [...prev, {
-          id: prev.length + 1,
-          type: 'assistant',
-          content: 'Desculpe, ocorreu um erro de conexão.',
-        }]);
+    if (!message.trim()) return;
+
+    const userMessage = {
+      id: Date.now(),
+      type: 'user' as const,
+      content: message,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setMessage('');
+    setIsThinking(true);
+
+    try {
+      const response = await chatAPI.sendMessage(userMessage.content);
+
+      if (!response.success || !response.data?.message) {
+        throw new Error(response.message || response.error || 'Resposta inválida do servidor');
       }
+
+      const assistantMessage = {
+        id: Date.now() + 1,
+        type: 'assistant' as const,
+        content: response.data.message,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Error fetching answer:', error);
+      const assistantMessage = {
+        id: Date.now() + 1,
+        type: 'assistant' as const,
+        content: 'Desculpe, ocorreu um erro ao processar sua mensagem.',
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+    } finally {
+      setIsThinking(false);
     }
   };
 
