@@ -10,7 +10,7 @@ const Dialog = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>
 >(({ ...props }, ref) => {
-  return <DialogPrimitive.Root ref={ref} data-slot="dialog" {...props} />;
+  return &lt;DialogPrimitive.Root ref={ref} data-slot="dialog" {...props} />;
 });
 Dialog.displayName = DialogPrimitive.Root.displayName;
 
@@ -18,7 +18,7 @@ const DialogTrigger = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Trigger>
 >(({ ...props }, ref) => {
-  return <DialogPrimitive.Trigger ref={ref} data-slot="dialog-trigger" {...props} />;
+  return &lt;DialogPrimitive.Trigger ref={ref} data-slot="dialog-trigger" {...props} />;
 });
 DialogTrigger.displayName = DialogPrimitive.Trigger.displayName;
 
@@ -26,7 +26,7 @@ const DialogPortal = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Portal>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Portal>
 >(({ ...props }, ref) => {
-  return <DialogPrimitive.Portal ref={ref} data-slot="dialog-portal" {...props} />;
+  return &lt;DialogPrimitive.Portal ref={ref} data-slot="dialog-portal" {...props} />;
 });
 DialogPortal.displayName = DialogPrimitive.Portal.displayName;
 
@@ -34,7 +34,7 @@ const DialogClose = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Close>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Close>
 >(({ ...props }, ref) => {
-  return <DialogPrimitive.Close ref={ref} data-slot="dialog-close" {...props} />;
+  return &lt;DialogPrimitive.Close ref={ref} data-slot="dialog-close" {...props} />;
 });
 DialogClose.displayName = DialogPrimitive.Close.displayName;
 
@@ -44,7 +44,7 @@ const DialogOverlay = React.forwardRef<
 >(
 ({ className, ...props }, ref) => {
   return (
-    <DialogPrimitive.Overlay
+    &lt;DialogPrimitive.Overlay
       ref={ref}
       data-slot="dialog-overlay"
       className={cn(
@@ -63,9 +63,9 @@ const DialogContent = React.forwardRef<
 >(({
  className, children, ...props }, ref) => {
   return (
-    <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
-      <DialogPrimitive.Content
+    &lt;DialogPortal data-slot="dialog-portal">
+      &lt;DialogOverlay />
+      &lt;DialogPrimitive.Content
         ref={ref}
         data-slot="dialog-content"
         className={cn(
@@ -75,12 +75,12 @@ const DialogContent = React.forwardRef<
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
-          <XIcon />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
-    </DialogPortal>
+        &lt;DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+          &lt;XIcon />
+          &lt;span className="sr-only">Close&lt;/span>
+        &lt;/DialogPrimitive.Close>
+      &lt;/DialogPrimitive.Content>
+    &lt;/DialogPortal>
   );
 });
 DialogContent.displayName = DialogPrimitive.Content.displayName;
@@ -90,7 +90,7 @@ const DialogHeader = React.forwardRef<
   React.ComponentPropsWithoutRef<"div">
 >(({ className, ...props }, ref) => {
   return (
-    <div
+    &lt;div
       ref={ref}
       data-slot="dialog-header"
       className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
@@ -105,7 +105,7 @@ const DialogFooter = React.forwardRef<
   React.ComponentPropsWithoutRef<"div">
 >(({ className, ...props }, ref) => {
   return (
-    <div
+    &lt;div
       ref={ref}
       data-slot="dialog-footer"
       className={cn(
@@ -123,7 +123,7 @@ const DialogTitle = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => {
   return (
-    <DialogPrimitive.Title
+    &lt;DialogPrimitive.Title
       ref={ref}
       data-slot="dialog-title"
       className={cn("text-lg leading-none font-semibold", className)}
@@ -138,7 +138,7 @@ const DialogDescription = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => {
   return (
-    <DialogPrimitive.Description
+    &lt;DialogPrimitive.Description
       ref={ref}
       data-slot="dialog-description"
       className={cn("text-muted-foreground text-sm", className)}
