@@ -28,10 +28,15 @@ Este documento descreve os passos para inicializar e executar o projeto ImpulsyI
 
 4. **Inicie o servidor Uvicorn:**
    ```bash
-   python3 -m uvicorn src.web.app:app --host 0.0.0.0 --port 8000
+   PYTHONPATH=src python3 -m uvicorn src.web.app:app --host 0.0.0.0 --port 8000
    ```
 
    O backend estará disponível em `http://localhost:8000`. Mantenha este terminal aberto.
+
+
+   cd /Users/Felipe/Documents/Projetos/Agentes/ImpulsyIA/backend
+  PYTHONPATH=src python3 -m uvicorn src.web.app:app --host 0.0.0.0 --port 8000
+  
 
 ## 2. Iniciar o Frontend (Aplicação React com Vite)
 
