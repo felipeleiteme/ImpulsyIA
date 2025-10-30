@@ -22,7 +22,6 @@ interface SubscriptionPageProps {
   chats: Chat[];
   currentChatId: string | null;
   onNavigateHome: () => void;
-  onNewChat: () => void;
   onSelectChat: (chatId: string) => void;
   onEditChat: (chatId: string) => void;
   onSaveEditChat: (chatId: string) => void;
@@ -41,7 +40,6 @@ export function SubscriptionPage({
   chats,
   currentChatId,
   onNavigateHome,
-  onNewChat,
   onSelectChat,
   onEditChat,
   onSaveEditChat,
@@ -88,10 +86,6 @@ export function SubscriptionPage({
         editingChatId={editingChatId}
         editingChatName={editingChatName}
         onClose={() => setIsSidebarOpen(false)}
-        onNewChat={() => {
-          onNewChat();
-          setIsSidebarOpen(false);
-        }}
         onSelectChat={(chatId) => {
           onSelectChat(chatId);
           setIsSidebarOpen(false);

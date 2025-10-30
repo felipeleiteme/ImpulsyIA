@@ -1,4 +1,4 @@
-import { Sparkles, Rocket, Menu, Send, Edit2, Trash2, User, CreditCard, LogOut, Plus, X, Home, ChevronLeft, Settings } from 'lucide-react';
+import { Sparkles, Rocket, Menu, Send, Edit2, Trash2, User, CreditCard, LogOut, X, Home, ChevronLeft, Settings } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -14,6 +14,7 @@ import { ForgotPasswordPage } from './components/ForgotPasswordPage';
 import { TermsOfServicePage } from './components/TermsOfServicePage';
 import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
 import { Toaster } from './components/ui/sonner';
+import { Sidebar } from './components/Sidebar';
 import { supabase } from './services/supabase';
 import { agentsAPI } from './services/api';
 import { toast } from 'sonner';
@@ -451,189 +452,42 @@ export default function App() {
         }`}>
         {/* Left Sidebar - Chat History (hide when profile or subscription is shown) */}
         {!showProfile && !showSubscription && (
-          <div className={`${isSidebarOpen ? 'w-72' : 'w-0'} transition-all duration-500 ease-in-out border-r overflow-hidden ${
-            isLightTheme 
-              ? 'border-slate-200 bg-white' 
-              : 'border-slate-700/50 bg-slate-950'
-          }`}>
-            <div className={`w-72 h-full flex flex-col transition-all duration-500 ease-in-out ${
-              isSidebarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
-            }`}>
-              {isSidebarOpen && (
-            <>
-              {/* Sidebar Header */}
-              <div className={`flex-shrink-0 p-4 border-b ${
-                isLightTheme ? 'border-slate-200' : 'border-slate-700/50'
-              }`}>
-                <div className="flex items-center justify-between mb-4">
-                  <button 
-                    onClick={() => setJourneyStarted(false)}
-                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                  >
-                    <span className="text-2xl">💎</span>
-                    <span className={`${isLightTheme ? 'text-slate-900' : 'text-slate-100'}`}>
-                      ImpulsyIA
-                    </span>
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsSidebarOpen(false)}
-                    className={`h-8 w-8 ${
-                      isLightTheme 
-                        ? 'text-slate-700 hover:bg-slate-100' 
-                        : 'text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  <Button 
-                    onClick={() => {
-                      setJourneyStarted(false);
-                      if (currentChatId) {
-                        handleDeleteChat(currentChatId);
-                      }
-                      setMessage('');
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nova Conversa
-                  </Button>
-                </div>
-              </div>
-
-              {/* Chat History */}
-              <div className="flex-1 overflow-y-auto space-y-1 p-[12px]">
-                {chats.map((chat) => (
-                  <div
-                    key={chat.id}
-                    className={`group rounded-lg p-3 cursor-pointer transition-all duration-200 ${
-                      currentChatId === chat.id
-                        ? isLightTheme
-                          ? 'bg-slate-100 shadow-sm'
-                          : 'bg-slate-800 shadow-md'
-                        : isLightTheme
-                          ? 'hover:bg-slate-50 hover:shadow-sm'
-                          : 'hover:bg-slate-900 hover:shadow-md'
-                    }`}
-                    onClick={() => {
-                      setCurrentChatId(chat.id);
-                      setIsSidebarOpen(false);
-                    }}
-                  >
-                    {editingChatId === chat.id ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={editingChatName}
-                          onChange={(e) => setEditingChatName(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') handleSaveEditChat(chat.id);
-                          }}
-                          className={`h-8 text-sm ${
-                            isLightTheme ? 'bg-white' : 'bg-slate-900'
-                          }`}
-                          autoFocus
-                        />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSaveEditChat(chat.id);
-                          }}
-                          className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className={`truncate ${
-                              isLightTheme ? 'text-slate-900' : 'text-slate-100'
-                            }`}>
-                              {chat.name}
-                            </div>
-                            <div className={`text-xs mt-1 ${
-                              isLightTheme ? 'text-slate-500' : 'text-slate-500'
-                            }`}>
-                              {chat.description}
-                            </div>
-                          </div>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditChat(chat.id);
-                              }}
-                              className={`p-1 rounded transition-colors ${
-                                isLightTheme
-                                  ? 'hover:bg-slate-200 text-slate-600'
-                                  : 'hover:bg-slate-700 text-slate-400'
-                              }`}
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteChat(chat.id);
-                              }}
-                              className={`p-1 rounded transition-colors ${
-                                isLightTheme
-                                  ? 'hover:bg-red-100 text-red-600'
-                                  : 'hover:bg-red-900/30 text-red-400'
-                              }`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Sidebar Footer - Subscription Link - Fixed at bottom */}
-              <div className={`flex-shrink-0 border-t p-3 mt-auto ${
-                isLightTheme ? 'border-slate-200 bg-white' : 'border-slate-700/50 bg-slate-950'
-              }`}>
-                <Button
-                  onClick={() => {
-                    setShowSubscription(true);
-                    setShowProfile(false);
-                    setIsSidebarOpen(false);
-                  }}
-                  variant="outline"
-                  className={`w-full justify-start transition-all duration-200 ${
-                    isPremium
-                      ? isLightTheme
-                        ? 'border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 shadow-sm hover:shadow-md'
-                        : 'border-blue-800 bg-gradient-to-r from-blue-950 to-indigo-950 text-blue-300 hover:from-blue-900 hover:to-indigo-900 hover:border-blue-700 shadow-md hover:shadow-lg'
-                      : isLightTheme
-                        ? 'border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm hover:shadow-md'
-                        : 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600 shadow-md hover:shadow-lg'
-                  }`}
-                >
-                  {isPremium ? (
-                    <>
-                      <span className="text-base mr-2">👑</span>
-                      <span className="font-medium">Premium Ativo</span>
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      <span>Fazer Upgrade</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </>
-          )}
-            </div>
+          <div
+            className={`${
+              isSidebarOpen ? 'w-72' : 'w-0'
+            } transition-all duration-500 ease-in-out border-r overflow-hidden ${
+              isLightTheme ? 'border-slate-200 bg-white' : 'border-slate-700/50 bg-slate-950'
+            }`}
+          >
+            <Sidebar
+              isOpen={isSidebarOpen}
+              isLightTheme={isLightTheme}
+              isPremium={isPremium}
+              chats={chats}
+              currentChatId={currentChatId}
+              editingChatId={editingChatId}
+              editingChatName={editingChatName}
+              onClose={() => setIsSidebarOpen(false)}
+              onSelectChat={(chatId) => {
+                setCurrentChatId(chatId);
+                setIsSidebarOpen(false);
+              }}
+              onEditChat={handleEditChat}
+              onSaveEditChat={handleSaveEditChat}
+              onDeleteChat={(chatId) => {
+                handleDeleteChat(chatId);
+                if (chatId === currentChatId) {
+                  setIsSidebarOpen(false);
+                }
+              }}
+              onEditNameChange={setEditingChatName}
+              onNavigateHome={() => setJourneyStarted(false)}
+              onOpenSubscription={() => {
+                setShowSubscription(true);
+                setShowProfile(false);
+                setIsSidebarOpen(false);
+              }}
+            />
           </div>
         )}
 
@@ -885,10 +739,6 @@ export default function App() {
                 setShowProfile(false);
                 setJourneyStarted(false);
               }}
-              onNewChat={() => {
-                handleNewChat();
-                setShowProfile(false);
-              }}
               onSelectChat={(chatId) => {
                 setCurrentChatId(chatId);
                 setJourneyStarted(true);
@@ -917,10 +767,6 @@ export default function App() {
               onNavigateHome={() => {
                 setShowSubscription(false);
                 setJourneyStarted(false);
-              }}
-              onNewChat={() => {
-                handleNewChat();
-                setShowSubscription(false);
               }}
               onSelectChat={(chatId) => {
                 setCurrentChatId(chatId);
@@ -1088,173 +934,47 @@ export default function App() {
           : 'bg-slate-950'
       }`}>
         {/* Left Sidebar - Chat History */}
-        <div className={`${isSidebarOpen ? 'w-72' : 'w-0'} transition-all duration-500 ease-in-out border-r overflow-hidden relative z-30 ${
-          isLightTheme 
-            ? 'border-slate-200 bg-white' 
-            : 'border-slate-700/50 bg-slate-950'
-        }`}>
-          <div className={`w-72 h-full flex flex-col transition-all duration-500 ease-in-out ${
-            isSidebarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
-          }`}>
-            {isSidebarOpen && (
-              <>
-                {/* Sidebar Header */}
-                <div className={`flex-shrink-0 p-4 border-b ${
-                  isLightTheme ? 'border-slate-200' : 'border-slate-700/50'
-                }`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">💎</span>
-                      <span className={`${isLightTheme ? 'text-slate-900' : 'text-slate-100'}`}>
-                        ImpulsyIA
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setIsSidebarOpen(false)}
-                      className={`h-8 w-8 ${
-                        isLightTheme 
-                          ? 'text-slate-700 hover:bg-slate-100' 
-                          : 'text-slate-300 hover:bg-slate-800'
-                      }`}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Chat History */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-1">
-                  {chats.map((chat) => (
-                    <div
-                      key={chat.id}
-                      className={`group rounded-lg p-3 cursor-pointer transition-all duration-200 ${
-                        currentChatId === chat.id
-                          ? isLightTheme
-                            ? 'bg-slate-100 shadow-sm'
-                            : 'bg-slate-800 shadow-md'
-                          : isLightTheme
-                            ? 'hover:bg-slate-50 hover:shadow-sm'
-                            : 'hover:bg-slate-900 hover:shadow-md'
-                      }`}
-                      onClick={() => {
-                        setCurrentChatId(chat.id);
-                        setJourneyStarted(true);
-                        setIsSidebarOpen(false);
-                      }}
-                    >
-                      {editingChatId === chat.id ? (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={editingChatName}
-                            onChange={(e) => setEditingChatName(e.target.value)}
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter') handleSaveEditChat(chat.id);
-                            }}
-                            className={`h-8 text-sm ${
-                              isLightTheme ? 'bg-white' : 'bg-slate-900'
-                            }`}
-                            autoFocus
-                          />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSaveEditChat(chat.id);
-                            }}
-                            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className={`truncate ${
-                                isLightTheme ? 'text-slate-900' : 'text-slate-100'
-                              }`}>
-                                {chat.name}
-                              </div>
-                              <div className={`text-xs mt-1 ${
-                                isLightTheme ? 'text-slate-500' : 'text-slate-500'
-                              }`}>
-                                {chat.description}
-                              </div>
-                            </div>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditChat(chat.id);
-                                }}
-                                className={`p-1 rounded transition-colors ${
-                                  isLightTheme
-                                    ? 'hover:bg-slate-200 text-slate-600'
-                                    : 'hover:bg-slate-700 text-slate-400'
-                                }`}
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteChat(chat.id);
-                                }}
-                                className={`p-1 rounded transition-colors ${
-                                  isLightTheme
-                                    ? 'hover:bg-red-100 text-red-600'
-                                    : 'hover:bg-red-900/30 text-red-400'
-                                }`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Sidebar Footer - Subscription Link - Fixed at bottom */}
-                <div className={`flex-shrink-0 border-t p-3 mt-auto ${
-                  isLightTheme ? 'border-slate-200 bg-white' : 'border-slate-700/50 bg-slate-950'
-                }`}>
-                  <Button
-                    onClick={() => {
-                      setShowSubscription(true);
-                      setShowProfile(false);
-                      setJourneyStarted(true);
-                      setIsSidebarOpen(false);
-                    }}
-                    variant="outline"
-                    className={`w-full justify-start transition-all duration-200 ${
-                      isPremium
-                        ? isLightTheme
-                          ? 'border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 shadow-sm hover:shadow-md'
-                          : 'border-blue-800 bg-gradient-to-r from-blue-950 to-indigo-950 text-blue-300 hover:from-blue-900 hover:to-indigo-900 hover:border-blue-700 shadow-md hover:shadow-lg'
-                        : isLightTheme
-                          ? 'border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm hover:shadow-md'
-                          : 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600 shadow-md hover:shadow-lg'
-                    }`}
-                  >
-                    {isPremium ? (
-                      <>
-                        <span className="text-base mr-2">👑</span>
-                        <span className="font-medium">Premium Ativo</span>
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        <span>Fazer Upgrade</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
+        <div
+          className={`${
+            isSidebarOpen ? 'w-72' : 'w-0'
+          } transition-all duration-500 ease-in-out border-r overflow-hidden relative z-30 ${
+            isLightTheme ? 'border-slate-200 bg-white' : 'border-slate-700/50 bg-slate-950'
+          }`}
+        >
+          <Sidebar
+            isOpen={isSidebarOpen}
+            isLightTheme={isLightTheme}
+            isPremium={isPremium}
+            chats={chats}
+            currentChatId={currentChatId}
+            editingChatId={editingChatId}
+            editingChatName={editingChatName}
+            onClose={() => setIsSidebarOpen(false)}
+            onSelectChat={(chatId) => {
+              setCurrentChatId(chatId);
+              setJourneyStarted(true);
+              setIsSidebarOpen(false);
+            }}
+            onEditChat={handleEditChat}
+            onSaveEditChat={handleSaveEditChat}
+            onDeleteChat={(chatId) => {
+              handleDeleteChat(chatId);
+              if (chatId === currentChatId) {
+                setIsSidebarOpen(false);
+              }
+            }}
+            onEditNameChange={setEditingChatName}
+            onNavigateHome={() => {
+              setJourneyStarted(false);
+              setIsSidebarOpen(false);
+            }}
+            onOpenSubscription={() => {
+              setShowSubscription(true);
+              setShowProfile(false);
+              setJourneyStarted(true);
+              setIsSidebarOpen(false);
+            }}
+          />
         </div>
 
         {/* Main Content Area */}

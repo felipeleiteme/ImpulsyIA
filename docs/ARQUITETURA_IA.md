@@ -251,5 +251,6 @@ Resposta: { "status": "received" }
 - **Mar/2025** – UX pós-login ajustada: usuário permanece na tela hero até enviar primeira mensagem (controle `journeyStarted`).
 - **Mar/2025** – Imports absolutos no backend e criação de `QwenClient`, evitando erros de import e centralizando integração com DashScope.
 - **Mar/2025** – Prompts dos agentes migrados para arquivos dedicados; documentação revisada com setup detalhado, contratos de API e passos de operação.
+- **Abr/2025** – Frontend sincronizado com layout refinado da pasta “Tela Inicial do App de IA”: novo componente `Sidebar` reutilizável, busca com padding ajustado, seções colapsáveis fechadas por padrão ao abrir o menu e eliminação do botão redundante “Nova Conversa”.
 
 > Para detalhes finos, consulte o histórico do Git (`git log`) ou PRs correspondentes.
