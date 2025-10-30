@@ -163,3 +163,55 @@ Execute estes passos uma única vez para habilitar o Vitest no projeto:
 5. **Rodar os testes**:
    - Execute `npm run test -- --run` para rodar os testes em modo CLI.
    - Somente testes com sufixo `.test.tsx` ou `.spec.tsx` (ou `.ts`) serão detectados.
+
+## Fluxo QA + Automatização com Loom, Gemini e Codex
+
+### Fase 2 – Gravar o Loom (Jeito Natural de PO)
+
+Ligue o Loom e navegue pela interface narrando **como você espera que a feature funcione**, sem termos técnicos.
+
+Exemplo de narração V3:
+
+> "Ok, Gemini, vou te mostrar como a tela de login deve funcionar.
+>
+> Olha, quando a página carrega, o botão 'Entrar' aqui embaixo... tá vendo? Ele tá apagado, eu não consigo clicar.
+>
+> Agora, se eu digitar 'teste@teste.com' aqui no campo de e-mail... e 'senha123' aqui no campo de senha... pronto! Viu? O botão 'Entrar' agora acendeu, ficou azul. Agora eu consigo clicar.
+>
+> É exatamente esse comportamento que eu quero."
+
+### Fase 3 – Novo "Prompt Perfeito" (Gemini como QA)
+
+Envie o vídeo e a URL do repo ao Gemini com o prompt:
+
+```
+Olá Gemini.
+
+Assista a este vídeo: [link_do_seu_video_loom]
+
+Analise meu repositório: [URL_do_seu_repo_github_impulsyia]
+
+Sua Tarefa (A "Tradução"): No vídeo, eu demonstro o comportamento que eu espero de uma feature (os "critérios de aceite"). Você deve atuar como um Engenheiro de QA Sênior.
+
+Seu Processo de Análise:
+
+Assista ao vídeo para entender a REGRA DE NEGÓCIO (ex: "O botão 'Entrar' só habilita quando os campos de e-mail e senha estão preenchidos").
+
+Leia o código-fonte correspondente no repositório (ex: frontend/src/components/LoginPage.tsx) para encontrar os data-testids dos elementos que eu interagi.
+
+Conecte a regra de negócio (do vídeo) com os data-testids (do código).
+
+Gere 2 Saídas:
+
+SAÍDA 1 (Prompt do Codex): O prompt perfeito para meu Codex CLI local implementar a lógica da feature.
+
+SAÍDA 2 (Código de Teste): O código de teste completo (Vitest + React Testing Library) que automatiza a regra de negócio que eu demonstrei. O teste deve usar os data-testids que você encontrou no código.
+```
+
+### Fase 4 – Workflow de Execução (RED-GREEN)
+
+1. Cole o código de teste sugerido em um novo arquivo (ex.: `frontend/src/components/LoginPage.test.tsx`).
+2. Rode `npm test` em `frontend/`. O teste deve falhar inicialmente (**RED**).
+3. Use o prompt do Codex fornecido para implementar a feature localmente.
+4. Rode `npm test` novamente. O teste deve passar (**GREEN**).
+5. Sempre que atualizar `LoginPage.tsx` (manualmente ou via merge do Figma), execute `npm test` para vigiar regressões daquela regra de negócio.
