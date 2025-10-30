@@ -299,6 +299,7 @@ export function ProfilePage({
             }`} />
 
             <Button
+              data-testid="profile-change-password-button"
               variant="outline"
               onClick={() => setIsChangePasswordOpen(true)}
               className={`w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
@@ -345,6 +346,7 @@ export function ProfilePage({
               </Label>
               <div className="relative">
                 <Input
+                  data-testid="profile-current-password-input"
                   id="current-password"
                   type={showCurrentPassword ? 'text' : 'password'}
                   value={currentPassword}
@@ -377,6 +379,7 @@ export function ProfilePage({
               </Label>
               <div className="relative">
                 <Input
+                  data-testid="profile-new-password-input"
                   id="new-password"
                   type={showNewPassword ? 'text' : 'password'}
                   value={newPassword}
@@ -409,6 +412,7 @@ export function ProfilePage({
               </Label>
               <div className="relative">
                 <Input
+                  data-testid="profile-confirm-password-input"
                   id="confirm-password"
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
@@ -447,6 +451,7 @@ export function ProfilePage({
               Cancelar
             </Button>
             <Button
+              data-testid="profile-change-password-submit"
               onClick={handleChangePassword}
               disabled={isSubmitting}
               className={`${

@@ -101,6 +101,7 @@ export function LoginPage({ isLightTheme, onToggleTheme, onShowSignUp, onShowFor
                   Email
                 </Label>
                 <Input
+                  data-testid="login-email-input"
                   id="email"
                   type="email"
                   placeholder="seu@email.com"
@@ -118,6 +119,7 @@ export function LoginPage({ isLightTheme, onToggleTheme, onShowSignUp, onShowFor
                 </Label>
                 <div className="relative">
                   <Input
+                    data-testid="login-password-input"
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
@@ -155,6 +157,7 @@ export function LoginPage({ isLightTheme, onToggleTheme, onShowSignUp, onShowFor
 
               {/* Login Button */}
               <Button
+                data-testid="login-submit-button"
                 type="submit"
                 disabled={isLoading || !email || !password}
                 className="w-full h-11 gap-2"
@@ -187,6 +190,7 @@ export function LoginPage({ isLightTheme, onToggleTheme, onShowSignUp, onShowFor
 
             {/* Google Login Button */}
             <Button
+              data-testid="login-google-button"
               type="button"
               variant="outline"
               onClick={handleGoogleLogin}

@@ -709,6 +709,7 @@ export default function App() {
                     
                     {/* Logout */}
                     <DropdownMenuItem 
+                      data-testid="user-menu-logout-button"
                       onClick={handleLogout}
                       className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
                     >
@@ -886,6 +887,7 @@ export default function App() {
                 }`}>
                   <div className="flex gap-2 items-center">
                     <Input
+                      data-testid="chat-input"
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -897,6 +899,7 @@ export default function App() {
                     }`}
                   />
                   <Button 
+                    data-testid="chat-send-button"
                     onClick={handleSendMessage}
                     disabled={!message.trim()}
                     size="icon"
@@ -1122,6 +1125,7 @@ export default function App() {
                     
                     {/* Logout */}
                     <DropdownMenuItem 
+                      data-testid="user-menu-logout-button"
                       onClick={handleLogout}
                       className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
                     >
@@ -1231,6 +1235,7 @@ export default function App() {
                 }`}>
                   <div className="flex gap-2 items-center">
                     <Input
+                      data-testid="chat-input"
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       onKeyPress={(e) => {
@@ -1247,6 +1252,7 @@ export default function App() {
                       }`}
                     />
                     <Button 
+                      data-testid="chat-send-button"
                       onClick={() => {
                         if (message.trim()) {
                           setJourneyStarted(true);

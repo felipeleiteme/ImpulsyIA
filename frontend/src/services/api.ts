@@ -1,6 +1,8 @@
 // src/services/api.ts
 // Centralized API service for all backend communications
 
+import { supabase } from './supabase';
+
 const API_BASE_URL = '/api'; // Using the proxy configured in vite.config.ts
 
 interface ApiResponse<T = any> {
@@ -9,6 +11,29 @@ interface ApiResponse<T = any> {
   error?: string;
   message?: string;
 }
+
+const withAuthHeaders = async (
+  baseHeaders: Record<string, string> = {},
+): Promise<Record<string, string>> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...baseHeaders,
+  };
+
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (error) {
+    console.warn('Unable to retrieve Supabase session for auth headers', error);
+  }
+
+  return headers;
+};
 
 // Authentication API functions
 export const authAPI = {
@@ -88,9 +113,7 @@ export const chatAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/chat/stream`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await withAuthHeaders(),
         body: JSON.stringify({ message }),
       });
 
@@ -152,9 +175,7 @@ export const agentsAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/agents`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await withAuthHeaders(),
       });
 
       const result = await response.json();
@@ -195,9 +216,7 @@ export const agentsAPI = {
 
       const response = await fetch(`${API_BASE_URL}/agents/${agentId}/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await withAuthHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -231,9 +250,7 @@ export const paymentsAPI = {
     try {
       const response = await fetch(`${API_BASE_URL}/payments/webhook`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await withAuthHeaders(),
         body: JSON.stringify(data),
       });
 

@@ -90,6 +90,9 @@ QWEN_MODEL_NAME="qwen-plus"
 QWEN_BASE_URL="https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 ```
 
+- **Onde obter**: o `SUPABASE_JWT_SECRET` fica em *Supabase → Settings → API → JWT Secret*; a `DASHSCOPE_API_KEY` é criada no console DashScope (Alibaba Cloud) em *API Keys/Applications*. Guarde fora do repositório.
+- Após preencher manualmente o `.env`, **não execute novamente** `cp .env.example .env`, pois isso sobrescreve os segredos.
+
 ### Frontend (`frontend/.env`)
 ```
 VITE_SUPABASE_URL="https://<instancia>.supabase.co"
@@ -117,7 +120,7 @@ VITE_SUPABASE_ANON_KEY="<anon_key>"
 cd backend
 python3 -m pip install -r requirements.txt
 cp .env.example .env  # e preencha as variáveis
-PYTHONPATH=src python3 -m src.main
+PYTHONPATH=src python3 -m uvicorn src.web.app:app --host 0.0.0.0 --port 8000  # sempre executar a partir de backend/
 
 # Terminal 2 – frontend
 cd frontend
@@ -140,6 +143,7 @@ npm run dev
 5. **Reset de conversa**: botão “Nova Conversa” limpa histórico local e reinsere mensagem introdutória do agente.
 6. **Stubs em auth/chat streaming/payments**: rotas existem, mas precisam de implementação real.
 7. **Dependências críticas**: ausência de `DASHSCOPE_API_KEY` gera `ValueError`; ausência de internet para DashScope → `RuntimeError` (500).
+8. **Execução correta do backend**: iniciar fora de `backend/` (ex.: a partir do diretório home) causa `ModuleNotFoundError: No module named 'src'`; configure `PYTHONPATH=src` no comando ou via variável de ambiente.
 
 ---
 

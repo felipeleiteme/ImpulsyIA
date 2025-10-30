@@ -134,6 +134,7 @@ export function SignUpPage({ isLightTheme, onBackToLogin, onShowTerms, onShowPri
                   Nome completo
                 </Label>
                 <Input
+                  data-testid="signup-name-input"
                   id="name"
                   type="text"
                   placeholder="Seu nome"
@@ -150,6 +151,7 @@ export function SignUpPage({ isLightTheme, onBackToLogin, onShowTerms, onShowPri
                   Email
                 </Label>
                 <Input
+                  data-testid="signup-email-input"
                   id="email"
                   type="email"
                   placeholder="seu@email.com"
@@ -167,6 +169,7 @@ export function SignUpPage({ isLightTheme, onBackToLogin, onShowTerms, onShowPri
                 </Label>
                 <div className="relative">
                   <Input
+                    data-testid="signup-password-input"
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Mínimo 8 caracteres"
@@ -198,6 +201,7 @@ export function SignUpPage({ isLightTheme, onBackToLogin, onShowTerms, onShowPri
                 </Label>
                 <div className="relative">
                   <Input
+                    data-testid="signup-confirm-password-input"
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Digite a senha novamente"
@@ -224,6 +228,7 @@ export function SignUpPage({ isLightTheme, onBackToLogin, onShowTerms, onShowPri
 
               {/* Sign Up Button */}
               <Button
+                data-testid="signup-submit-button"
                 type="submit"
                 disabled={isLoading || !name || !email || !password || !confirmPassword}
                 className="w-full h-11 gap-2 mt-6"
