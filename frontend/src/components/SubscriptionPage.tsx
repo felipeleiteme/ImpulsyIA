@@ -10,9 +10,9 @@ import { Sidebar } from './Sidebar';
 import { useState } from 'react';
 
 interface Chat {
-  id: number;
+  id: string;
   name: string;
-  date: string;
+  description: string;
 }
 
 interface SubscriptionPageProps {
@@ -20,14 +20,14 @@ interface SubscriptionPageProps {
   onBack: () => void;
   isPremium?: boolean;
   chats: Chat[];
-  currentChatId: number;
+  currentChatId: string | null;
   onNavigateHome: () => void;
   onNewChat: () => void;
-  onSelectChat: (chatId: number) => void;
-  onEditChat: (chatId: number) => void;
-  onSaveEditChat: (chatId: number) => void;
-  onDeleteChat: (chatId: number) => void;
-  editingChatId: number | null;
+  onSelectChat: (chatId: string) => void;
+  onEditChat: (chatId: string) => void;
+  onSaveEditChat: (chatId: string) => void;
+  onDeleteChat: (chatId: string) => void;
+  editingChatId: string | null;
   editingChatName: string;
   onEditNameChange: (name: string) => void;
   onOpenProfile: () => void;

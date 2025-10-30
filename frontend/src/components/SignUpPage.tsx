@@ -5,17 +5,17 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
 import { Eye, EyeOff, Sparkles, ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
+import { supabase } from '../services/supabase'; // Importe o cliente Supabase
 
 interface SignUpPageProps {
   isLightTheme: boolean;
-  onSignUp: (name: string, email: string, password: string) => void;
   onBackToLogin: () => void;
   onShowTerms?: () => void;
   onShowPrivacy?: () => void;
 }
 
-export function SignUpPage({ isLightTheme, onSignUp, onBackToLogin, onShowTerms, onShowPrivacy }: SignUpPageProps) {
+export function SignUpPage({ isLightTheme, onBackToLogin, onShowTerms, onShowPrivacy }: SignUpPageProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,25 +32,42 @@ export function SignUpPage({ isLightTheme, onSignUp, onBackToLogin, onShowTerms,
       toast.error('Por favor, preencha todos os campos');
       return;
     }
-
     if (password.length < 8) {
       toast.error('A senha deve ter pelo menos 8 caracteres');
       return;
     }
-
     if (password !== confirmPassword) {
       toast.error('As senhas não coincidem');
       return;
     }
 
     setIsLoading(true);
-    
-    // Simular delay de criação de conta
-    setTimeout(() => {
-      onSignUp(name, email, password);
-      setIsLoading(false);
-      toast.success('Conta criada com sucesso!');
-    }, 1500);
+
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        // Você pode passar dados adicionais que serão armazenados no perfil do usuário
+        data: {
+          full_name: name,
+        }
+      }
+    });
+
+    setIsLoading(false);
+
+    if (error) {
+      toast.error(error.message);
+    } else if (data.user) {
+      // Por padrão, o Supabase envia um e-mail de confirmação.
+      // O usuário só consegue fazer login após clicar no link do e-mail.
+      toast.success('Cadastro realizado! Verifique seu e-mail para confirmar sua conta.');
+      // Você pode redirecionar o usuário ou limpar o formulário aqui
+      setName('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+    }
   };
 
   return (

@@ -8,28 +8,31 @@ import { SectionCard } from './SectionCard';
 import { InfoBanner } from './InfoBanner';
 
 import { useState } from 'react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { Sidebar } from './Sidebar';
+import { supabase } from '../services/supabase';
 
 interface Chat {
-  id: number;
+  id: string;
   name: string;
-  date: string;
+  description: string;
 }
 
 interface ProfilePageProps {
   isLightTheme: boolean;
   onBack: () => void;
   isPremium?: boolean;
+  userName?: string | null;
+  userEmail?: string | null;
   chats: Chat[];
-  currentChatId: number;
+  currentChatId: string | null;
   onNavigateHome: () => void;
   onNewChat: () => void;
-  onSelectChat: (chatId: number) => void;
-  onEditChat: (chatId: number) => void;
-  onSaveEditChat: (chatId: number) => void;
-  onDeleteChat: (chatId: number) => void;
-  editingChatId: number | null;
+  onSelectChat: (chatId: string) => void;
+  onEditChat: (chatId: string) => void;
+  onSaveEditChat: (chatId: string) => void;
+  onDeleteChat: (chatId: string) => void;
+  editingChatId: string | null;
   editingChatName: string;
   onEditNameChange: (name: string) => void;
   onOpenSubscription: () => void;
@@ -50,7 +53,9 @@ export function ProfilePage({
   editingChatId,
   editingChatName,
   onEditNameChange,
-  onOpenSubscription
+  onOpenSubscription,
+  userName,
+  userEmail,
 }: ProfilePageProps) {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -61,9 +66,10 @@ export function ProfilePage({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const displayName = userName || userEmail || 'Usuário';
+  const displayEmail = userEmail || 'Email não disponível';
 
   const handleChangePassword = async () => {
-    // Validações
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error('Por favor, preencha todos os campos');
       return;
@@ -79,17 +85,40 @@ export function ProfilePage({
       return;
     }
 
+    if (!userEmail) {
+      toast.error('Não foi possível validar o e-mail do usuário.');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    // Simulação de requisição
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsChangePasswordOpen(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+    try {
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword,
+      });
+
+      if (reauthError) {
+        throw new Error('Senha atual incorreta. Tente novamente.');
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
       toast.success('Senha alterada com sucesso!');
-    }, 1500);
+      handleCloseDialog();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Não foi possível alterar a senha no momento.';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCloseDialog = () => {
@@ -240,6 +269,7 @@ export function ProfilePage({
           title="Informações Pessoais"
           icon={User}
           isLightTheme={isLightTheme}
+          subtitle={displayName}
         >
           <div className="space-y-4">
             <div className={`flex items-center gap-4 p-4 rounded-lg transition-all duration-200 ${
@@ -265,7 +295,7 @@ export function ProfilePage({
                 <div className={`truncate ${
                   isLightTheme ? 'text-slate-900' : 'text-slate-100'
                 }`}>
-                  joao.silva@email.com
+                  {displayEmail}
                 </div>
               </div>
             </div>

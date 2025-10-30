@@ -10,6 +10,7 @@ interface SectionCardProps {
   children: ReactNode;
   variant?: 'default' | 'premium';
   className?: string;
+  subtitle?: string;
 }
 
 export function SectionCard({
@@ -20,6 +21,7 @@ export function SectionCard({
   children,
   variant = 'default',
   className = '',
+  subtitle,
 }: SectionCardProps) {
   const isPremium = variant === 'premium';
 
@@ -36,14 +38,25 @@ export function SectionCard({
       } ${className}`}
     >
       <div className="flex items-center justify-between mb-6">
-        <h2
-          className={`flex items-center gap-2 ${
-            isLightTheme ? 'text-slate-900' : 'text-slate-100'
-          }`}
-        >
-          {emoji && <span className="text-xl">{emoji}</span>}
-          <span>{title}</span>
-        </h2>
+        <div className="flex flex-col">
+          <h2
+            className={`flex items-center gap-2 ${
+              isLightTheme ? 'text-slate-900' : 'text-slate-100'
+            }`}
+          >
+            {emoji && <span className="text-xl">{emoji}</span>}
+            <span>{title}</span>
+          </h2>
+          {subtitle && (
+            <span
+              className={`text-sm leading-tight ${
+                isLightTheme ? 'text-slate-500' : 'text-slate-400'
+              }`}
+            >
+              {subtitle}
+            </span>
+          )}
+        </div>
         {Icon && (
           <div
             className={`p-2.5 rounded-lg transition-colors ${

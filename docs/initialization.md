@@ -15,19 +15,23 @@ Este documento descreve os passos para inicializar e executar o projeto ImpulsyI
    cd /Users/Felipe/Documents/Projetos/Agentes/ImpulsyIA/backend
    ```
 
-2. **Instale as dependências do backend:**
+2. **Instale as dependências do backend (se necessário):**
    ```bash
    python3 -m pip install -r requirements.txt
    ```
    *Nota: Se você encontrar problemas de permissão, pode usar `python3 -m pip install -r requirements.txt --user`*
 
-3. **Inicie o servidor Uvicorn:**
+3. **Crie o arquivo .env (se não existir):**
    ```bash
-   PYTHONPATH=src python3 -m src.main
+   cp .env.example .env
    ```
-   *Nota: O PYTHONPATH é necessário para que o Python encontre os módulos do projeto*
 
-   O backend estará disponível em `http://127.0.0.1:8000`. Mantenha este terminal aberto.
+4. **Inicie o servidor Uvicorn:**
+   ```bash
+   python3 -m uvicorn src.web.app:app --host 0.0.0.0 --port 8000
+   ```
+
+   O backend estará disponível em `http://localhost:8000`. Mantenha este terminal aberto.
 
 ## 2. Iniciar o Frontend (Aplicação React com Vite)
 

@@ -3,9 +3,9 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 
 interface Chat {
-  id: number;
+  id: string;
   name: string;
-  date: string;
+  description: string;
 }
 
 interface SidebarProps {
@@ -13,15 +13,15 @@ interface SidebarProps {
   isLightTheme: boolean;
   isPremium: boolean;
   chats: Chat[];
-  currentChatId: number;
-  editingChatId: number | null;
+  currentChatId: string | null;
+  editingChatId: string | null;
   editingChatName: string;
   onClose: () => void;
   onNewChat: () => void;
-  onSelectChat: (chatId: number) => void;
-  onEditChat: (chatId: number) => void;
-  onSaveEditChat: (chatId: number) => void;
-  onDeleteChat: (chatId: number) => void;
+  onSelectChat: (chatId: string) => void;
+  onEditChat: (chatId: string) => void;
+  onSaveEditChat: (chatId: string) => void;
+  onDeleteChat: (chatId: string) => void;
   onEditNameChange: (name: string) => void;
   onNavigateHome: () => void;
   onOpenSubscription: () => void;
@@ -141,13 +141,13 @@ export function Sidebar({
                     }`}>
                       {chat.name}
                     </div>
-                    <div className={`text-xs mt-1 ${
-                      isLightTheme ? 'text-slate-500' : 'text-slate-500'
-                    }`}>
-                      {chat.date}
-                    </div>
+                  <div className={`text-xs mt-1 ${
+                    isLightTheme ? 'text-slate-500' : 'text-slate-500'
+                  }`}>
+                    {chat.description}
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

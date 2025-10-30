@@ -5,10 +5,11 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
 import { Eye, EyeOff, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '../services/supabase';
 
 interface LoginPageProps {
   isLightTheme: boolean;
-  onLogin: (email: string, password: string) => void;
   onToggleTheme: () => void;
   onShowSignUp?: () => void;
   onShowForgotPassword?: () => void;
@@ -16,7 +17,7 @@ interface LoginPageProps {
   onShowPrivacy?: () => void;
 }
 
-export function LoginPage({ isLightTheme, onLogin, onToggleTheme, onShowSignUp, onShowForgotPassword, onShowTerms, onShowPrivacy }: LoginPageProps) {
+export function LoginPage({ isLightTheme, onToggleTheme, onShowSignUp, onShowForgotPassword, onShowTerms, onShowPrivacy }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -24,13 +25,29 @@ export function LoginPage({ isLightTheme, onLogin, onToggleTheme, onShowSignUp, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      toast.error('Por favor, preencha e-mail e senha.');
+      return;
+    }
     setIsLoading(true);
-    
-    // Simular delay de login
-    setTimeout(() => {
-      onLogin(email, password);
-      setIsLoading(false);
-    }, 1000);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+    setIsLoading(false);
+    if (error) {
+      toast.error(error.message);
+    }
+    // O listener onAuthStateChange no App.tsx cuidará do redirecionamento
+  };
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    });
+    if (error) {
+      toast.error(error.message);
+    }
   };
 
   return (
@@ -172,10 +189,7 @@ export function LoginPage({ isLightTheme, onLogin, onToggleTheme, onShowSignUp, 
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                // Google login logic aqui
-                console.log('Login com Google');
-              }}
+              onClick={handleGoogleLogin}
               className="w-full h-11 gap-2"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import auth, chat, payments
+from .routers import agents, auth, chat, payments
 
 app = FastAPI(
     title="ImpulsyIA Headless Backend",
@@ -25,3 +25,4 @@ async def root():
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(payments.router, prefix="/api/payments", tags=["Payments"])
+app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])

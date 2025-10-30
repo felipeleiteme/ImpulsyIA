@@ -1,7 +1,7 @@
 import { Sparkles, Rocket, Menu, Send, Edit2, Trash2, User, CreditCard, LogOut, Plus, X, Home, ChevronLeft, Settings } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './components/ui/dropdown-menu';
 import { ThinkingIndicator } from './components/ThinkingIndicator';
@@ -15,7 +15,20 @@ import { TermsOfServicePage } from './components/TermsOfServicePage';
 import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
 import { Toaster } from './components/ui/sonner';
 import { supabase } from './services/supabase';
-import { chatAPI } from './services/api';
+import { agentsAPI } from './services/api';
+import { toast } from 'sonner';
+
+type AgentInfo = {
+  id: string;
+  name: string;
+  description: string;
+};
+
+type ConversationMessage = {
+  id: string;
+  type: 'assistant' | 'user';
+  content: string;
+};
 
 export default function App() {
   const [isLightTheme, setIsLightTheme] = useState(false);
@@ -27,41 +40,90 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [journeyStarted, setJourneyStarted] = useState(false);
   const [message, setMessage] = useState('');
-  const [currentChatId, setCurrentChatId] = useState(1);
-  const [editingChatId, setEditingChatId] = useState<number | null>(null);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editingChatName, setEditingChatName] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [isPremium, setIsPremium] = useState(false); // Controla se o usuário tem plano Premium - altere para 'true' para testar o estado Premium
+  const [userProfile, setUserProfile] = useState<{
+    name: string | null;
+    email: string | null;
+    avatarUrl?: string | null;
+  } | null>(null);
   
-  const [chats, setChats] = useState([
-    { id: 1, name: 'Mestre do Mapeamento', date: 'Hoje' },
-    { id: 2, name: 'Objetivos de Carreira', date: 'Ontem' },
-    { id: 3, name: 'Desenvolvimento Pessoal', date: '2 dias atrás' },
-  ]);
+  const getInitials = (value: string | null | undefined) => {
+    if (!value) return 'U';
+    const trimmed = value.trim();
+    if (!trimmed) return 'U';
+    const parts = trimmed.split(/\s+/);
+    if (parts.length === 1) {
+      return parts[0].charAt(0).toUpperCase();
+    }
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  };
 
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: 'assistant',
-      content: 'Olá! Bem-vindo ao Mestre do Mapeamento 🗺️',
-    },
-    {
-      id: 2,
-      type: 'assistant',
-      content: 'Vou te ajudar a organizar seus objetivos de vida de forma holística. Para começar, me conte: qual é a área da sua vida que você mais gostaria de desenvolver agora?',
-    },
-  ]);
-  
+  const displayName = userProfile?.name || userProfile?.email || 'Usuário';
+  const displayEmail = userProfile?.email || 'Email não disponível';
+  const avatarUrl = userProfile?.avatarUrl || undefined;
+
+  const [chats, setChats] = useState<AgentInfo[]>([]);
+  const [agentSessions, setAgentSessions] = useState<Record<string, ConversationMessage[]>>({});
+
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const generateMessageId = useCallback(
+    () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    []
+  );
+
+  const createIntroMessages = useCallback(
+    (agent: AgentInfo): ConversationMessage[] => [
+      {
+        id: generateMessageId(),
+        type: 'assistant',
+        content: `Olá! Eu sou ${agent.name}. ${agent.description}`,
+      },
+    ],
+    [generateMessageId]
+  );
+
+  const ensureAgentSession = useCallback(
+    (agent: AgentInfo) => {
+      setAgentSessions((prev) => {
+        if (prev[agent.id]) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [agent.id]: createIntroMessages(agent),
+        };
+      });
+    },
+    [createIntroMessages]
+  );
+
+  const currentAgent = currentChatId
+    ? chats.find((chat) => chat.id === currentChatId) || null
+    : null;
+
+  const currentMessages: ConversationMessage[] = currentAgent
+    ? agentSessions[currentAgent.id] ?? []
+    : [];
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [currentMessages, currentAgent?.id]);
+
+  useEffect(() => {
+    if (currentAgent) {
+      ensureAgentSession(currentAgent);
+    }
+  }, [currentAgent, ensureAgentSession]);
 
   useEffect(() => {
     if (isLightTheme) {
@@ -80,12 +142,27 @@ export default function App() {
       if (session) {
         setIsAuthenticated(true);
         setJourneyStarted(false);
-        if (chats.length > 0) {
-          setCurrentChatId(chats[0].id);
+        const supabaseUser = session.user;
+        setUserProfile({
+          name:
+            supabaseUser.user_metadata?.full_name ??
+            supabaseUser.user_metadata?.name ??
+            supabaseUser.email ??
+            null,
+          email: supabaseUser.email ?? null,
+          avatarUrl: supabaseUser.user_metadata?.avatar_url ?? null,
+        });
+        if (typeof supabaseUser.user_metadata?.is_premium === 'boolean') {
+          setIsPremium(!!supabaseUser.user_metadata.is_premium);
         }
       } else {
         setIsAuthenticated(false);
         setJourneyStarted(false);
+        setUserProfile(null);
+        setIsPremium(false);
+        setChats([]);
+        setAgentSessions({});
+        setCurrentChatId(null);
       }
     };
 
@@ -99,8 +176,18 @@ export default function App() {
 
       if (session) {
         setJourneyStarted(false);
-        if (chats.length > 0) {
-          setCurrentChatId(chats[0].id);
+        const supabaseUser = session.user;
+        setUserProfile({
+          name:
+            supabaseUser.user_metadata?.full_name ??
+            supabaseUser.user_metadata?.name ??
+            supabaseUser.email ??
+            null,
+          email: supabaseUser.email ?? null,
+          avatarUrl: supabaseUser.user_metadata?.avatar_url ?? null,
+        });
+        if (typeof supabaseUser.user_metadata?.is_premium === 'boolean') {
+          setIsPremium(!!supabaseUser.user_metadata.is_premium);
         }
       } else {
         setJourneyStarted(false);
@@ -108,13 +195,56 @@ export default function App() {
         setShowSubscription(false);
         setShowCheckout(false);
         setIsSidebarOpen(false);
+        setUserProfile(null);
+        setIsPremium(false);
+        setChats([]);
+        setAgentSessions({});
+        setCurrentChatId(null);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [chats]);
+  }, []);
+
+  const loadAgents = useCallback(async () => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    try {
+      const response = await agentsAPI.list();
+      if (!response.success || !response.data) {
+        throw new Error(response.message || response.error || 'Não foi possível carregar os agentes.');
+      }
+
+      setChats(response.data);
+
+      if (response.data.length > 0) {
+        const fallbackAgent = response.data[0];
+        setCurrentChatId((prev) => {
+          if (!prev) return fallbackAgent.id;
+          const exists = response.data.some((agent) => agent.id === prev);
+          return exists ? prev : fallbackAgent.id;
+        });
+        response.data.forEach((agent) => ensureAgentSession(agent));
+      } else {
+        setCurrentChatId(null);
+        setJourneyStarted(false);
+        setAgentSessions({});
+      }
+    } catch (error) {
+      console.error('Erro ao carregar agentes:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Não foi possível carregar os agentes no momento.'
+      );
+    }
+  }, [ensureAgentSession, isAuthenticated]);
+
+  useEffect(() => {
+    loadAgents();
+  }, [loadAgents]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -122,6 +252,11 @@ export default function App() {
     setShowForgotPassword(false);
     setShowTermsOfService(false);
     setShowPrivacyPolicy(false);
+    setUserProfile(null);
+    setIsPremium(false);
+    setChats([]);
+    setAgentSessions({});
+    setCurrentChatId(null);
   };
 
   const handleBackToAuth = () => {
@@ -186,82 +321,96 @@ export default function App() {
   ];
 
   const handleSendMessage = async () => {
-    if (!message.trim()) return;
+    if (!currentAgent || !message.trim()) return;
 
-    const userMessage = {
-      id: Date.now(),
-      type: 'user' as const,
+    const userMessage: ConversationMessage = {
+      id: generateMessageId(),
+      type: 'user',
       content: message,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const existingMessages = agentSessions[currentAgent.id] ?? [];
+    const updatedConversation = [...existingMessages, userMessage];
+
+    setAgentSessions((prev) => ({
+      ...prev,
+      [currentAgent.id]: updatedConversation,
+    }));
+
     setMessage('');
     setIsThinking(true);
+    setJourneyStarted(true);
 
     try {
-      const response = await chatAPI.sendMessage(userMessage.content);
+      const payloadMessages = updatedConversation.map((msg) => ({
+        role: msg.type,
+        content: msg.content,
+      }));
+
+      const response = await agentsAPI.chat(currentAgent.id, payloadMessages);
 
       if (!response.success || !response.data?.message) {
-        throw new Error(response.message || response.error || 'Resposta inválida do servidor');
+        throw new Error(response.message || response.error || 'Resposta inválida do agente');
       }
 
-      const assistantMessage = {
-        id: Date.now() + 1,
-        type: 'assistant' as const,
+      const assistantMessage: ConversationMessage = {
+        id: generateMessageId(),
+        type: 'assistant',
         content: response.data.message,
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setAgentSessions((prev) => {
+        const history = prev[currentAgent.id] ?? updatedConversation;
+        return {
+          ...prev,
+          [currentAgent.id]: [...history, assistantMessage],
+        };
+      });
     } catch (error) {
       console.error('Error fetching answer:', error);
-      const assistantMessage = {
-        id: Date.now() + 1,
-        type: 'assistant' as const,
+      toast.error('Não foi possível obter resposta do agente agora.');
+      const assistantMessage: ConversationMessage = {
+        id: generateMessageId(),
+        type: 'assistant',
         content: 'Desculpe, ocorreu um erro ao processar sua mensagem.',
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setAgentSessions((prev) => {
+        const history = prev[currentAgent.id] ?? updatedConversation;
+        return {
+          ...prev,
+          [currentAgent.id]: [...history, assistantMessage],
+        };
+      });
     } finally {
       setIsThinking(false);
     }
   };
 
-  const handleDeleteChat = (chatId: number) => {
-    setChats(chats.filter(chat => chat.id !== chatId));
-    if (currentChatId === chatId && chats.length > 1) {
-      const remainingChats = chats.filter(chat => chat.id !== chatId);
-      setCurrentChatId(remainingChats[0].id);
+  const handleDeleteChat = (chatId: string) => {
+    const agent = chats.find((chat) => chat.id === chatId);
+    if (!agent) return;
+    setAgentSessions((prev) => ({
+      ...prev,
+      [chatId]: createIntroMessages(agent),
+    }));
+    if (currentChatId === chatId) {
+      setJourneyStarted(false);
+      setMessage('');
     }
   };
 
-  const handleEditChat = (chatId: number) => {
-    setEditingChatId(chatId);
-    const chat = chats.find(c => c.id === chatId);
-    if (chat) setEditingChatName(chat.name);
+  const handleEditChat = (_chatId: string) => {
+    toast.info('Os agentes possuem nomes fixos e não podem ser renomeados.');
   };
 
-  const handleSaveEditChat = (chatId: number) => {
-    setChats(chats.map(chat => 
-      chat.id === chatId ? { ...chat, name: editingChatName } : chat
-    ));
-    setEditingChatId(null);
-    setEditingChatName('');
+  const handleSaveEditChat = (_chatId: string) => {
+    /* Intencionalmente vazio: agentes não podem ser renomeados */
   };
 
   const handleNewChat = () => {
-    const newChat = {
-      id: chats.length + 1,
-      name: `Nova Conversa ${chats.length + 1}`,
-      date: 'Agora',
-    };
-    setChats([newChat, ...chats]);
-    setCurrentChatId(newChat.id);
-    setMessages([
-      {
-        id: 1,
-        type: 'assistant',
-        content: 'Olá! Como posso ajudá-lo hoje? 💎',
-      },
-    ]);
+    if (currentAgent) {
+      handleDeleteChat(currentAgent.id);
+    }
   };
 
   if (journeyStarted) {
@@ -343,7 +492,9 @@ export default function App() {
                   <Button 
                     onClick={() => {
                       setJourneyStarted(false);
-                      setMessages([]);
+                      if (currentChatId) {
+                        handleDeleteChat(currentChatId);
+                      }
                       setMessage('');
                     }}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
@@ -408,7 +559,7 @@ export default function App() {
                             <div className={`text-xs mt-1 ${
                               isLightTheme ? 'text-slate-500' : 'text-slate-500'
                             }`}>
-                              {chat.date}
+                              {chat.description}
                             </div>
                           </div>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -618,33 +769,24 @@ export default function App() {
                             ? 'ring-slate-200/80 ring-offset-white group-hover:ring-slate-300' 
                             : 'ring-slate-800/80 ring-offset-slate-950 group-hover:ring-slate-700'
                       }`}>
-                        <AvatarImage src="" />
+                        <AvatarImage src={avatarUrl} />
                         <AvatarFallback className={`font-semibold transition-all duration-200 ${
                           isLightTheme ? 'bg-blue-100 text-blue-700' : 'bg-blue-900 text-blue-300'
                         }`}>
-                          JS
+                          {getInitials(displayName)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="hidden md:flex md:flex-col text-left min-w-0 pr-1">
                         <div className={`text-sm font-medium truncate transition-colors duration-200 ${
                           isLightTheme ? 'text-slate-900' : 'text-slate-100'
                         }`}>
-                          João Silva
+                          {displayName}
                         </div>
-                        {isPremium ? (
-                          <div className={`text-xs flex items-center gap-1.5 mt-0.5 ${
-                            isLightTheme ? 'text-blue-600' : 'text-blue-400'
-                          }`}>
-                            <span className="text-[10px]">👑</span>
-                            <span className="font-medium">Premium</span>
-                          </div>
-                        ) : (
-                          <div className={`text-xs mt-0.5 ${
-                            isLightTheme ? 'text-slate-500' : 'text-slate-400'
-                          }`}>
-                            Plano Gratuito
-                          </div>
-                        )}
+                        <div className={`text-xs mt-0.5 ${
+                          isLightTheme ? 'text-slate-500' : 'text-slate-400'
+                        }`}>
+                          {isPremium ? 'Plano Premium' : 'Plano Gratuito'}
+                        </div>
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
@@ -655,19 +797,19 @@ export default function App() {
                     }`}>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10">
-                          <AvatarImage src="" />
+                          <AvatarImage src={avatarUrl} />
                           <AvatarFallback className={`${
                             isLightTheme ? 'bg-blue-100 text-blue-600' : 'bg-blue-900 text-blue-300'
                           }`}>
-                            JS
+                            {getInitials(displayName)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className={`truncate ${isLightTheme ? 'text-slate-900' : 'text-slate-100'}`}>
-                            João Silva
+                            {displayName}
                           </div>
                           <div className={`text-xs truncate ${isLightTheme ? 'text-slate-500' : 'text-slate-400'}`}>
-                            joao.silva@email.com
+                            {displayEmail}
                           </div>
                           {isPremium && (
                             <div className={`text-xs flex items-center gap-1 mt-1 ${
@@ -730,6 +872,8 @@ export default function App() {
             <ProfilePage 
               isLightTheme={isLightTheme}
               isPremium={isPremium}
+              userName={userProfile?.name || userProfile?.email || null}
+              userEmail={userProfile?.email || null}
               chats={chats}
               currentChatId={currentChatId}
               editingChatId={editingChatId}
@@ -747,6 +891,7 @@ export default function App() {
               }}
               onSelectChat={(chatId) => {
                 setCurrentChatId(chatId);
+                setJourneyStarted(true);
                 setShowProfile(false);
               }}
               onEditChat={handleEditChat}
@@ -779,6 +924,7 @@ export default function App() {
               }}
               onSelectChat={(chatId) => {
                 setCurrentChatId(chatId);
+                setJourneyStarted(true);
                 setShowSubscription(false);
               }}
               onEditChat={handleEditChat}
@@ -802,7 +948,7 @@ export default function App() {
                 className="flex-1 overflow-y-auto px-6 py-8"
               >
                 <div className="max-w-3xl mx-auto space-y-6">
-                  {messages.map((msg) => (
+                  {currentMessages.map((msg) => (
                     <div
                       key={msg.id}
                       className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
@@ -1033,7 +1179,7 @@ export default function App() {
                               <div className={`text-xs mt-1 ${
                                 isLightTheme ? 'text-slate-500' : 'text-slate-500'
                               }`}>
-                                {chat.date}
+                                {chat.description}
                               </div>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1172,33 +1318,24 @@ export default function App() {
                             ? 'ring-slate-200/80 group-hover:ring-slate-300' 
                             : 'ring-slate-800/80 group-hover:ring-slate-700'
                       }`}>
-                        <AvatarImage src="" />
+                        <AvatarImage src={avatarUrl} />
                         <AvatarFallback className={`font-semibold transition-all duration-200 ${
                           isLightTheme ? 'bg-blue-100 text-blue-700' : 'bg-blue-900 text-blue-300'
                         }`}>
-                          JS
+                          {getInitials(displayName)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="hidden md:flex md:flex-col text-left min-w-0 pr-1">
                         <div className={`text-sm font-medium truncate transition-colors duration-200 ${
                           isLightTheme ? 'text-slate-900' : 'text-slate-100'
                         }`}>
-                          João Silva
+                          {displayName}
                         </div>
-                        {isPremium ? (
-                          <div className={`text-xs flex items-center gap-1.5 mt-0.5 ${
-                            isLightTheme ? 'text-blue-600' : 'text-blue-400'
-                          }`}>
-                            <span className="text-[10px]">👑</span>
-                            <span className="font-medium">Premium</span>
-                          </div>
-                        ) : (
-                          <div className={`text-xs mt-0.5 ${
-                            isLightTheme ? 'text-slate-500' : 'text-slate-400'
-                          }`}>
-                            Plano Gratuito
-                          </div>
-                        )}
+                        <div className={`text-xs mt-0.5 ${
+                          isLightTheme ? 'text-slate-500' : 'text-slate-400'
+                        }`}>
+                          {isPremium ? 'Plano Premium' : 'Plano Gratuito'}
+                        </div>
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
@@ -1209,19 +1346,19 @@ export default function App() {
                     }`}>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10">
-                          <AvatarImage src="" />
+                          <AvatarImage src={avatarUrl} />
                           <AvatarFallback className={`${
                             isLightTheme ? 'bg-blue-100 text-blue-600' : 'bg-blue-900 text-blue-300'
                           }`}>
-                            JS
+                            {getInitials(displayName)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className={`truncate ${isLightTheme ? 'text-slate-900' : 'text-slate-100'}`}>
-                            João Silva
+                            {displayName}
                           </div>
                           <div className={`text-xs truncate ${isLightTheme ? 'text-slate-500' : 'text-slate-400'}`}>
-                            joao.silva@email.com
+                            {displayEmail}
                           </div>
                           {isPremium && (
                             <div className={`text-xs flex items-center gap-1 mt-1 ${
