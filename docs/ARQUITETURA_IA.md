@@ -53,6 +53,7 @@ ImpulsyIA/
 |--------------------------|---------------------------------------------------------------|------------------------------------------------------|
 | Frontend                 | React 18, TypeScript, Vite, Tailwind CSS                     | `frontend/src/App.tsx`, `frontend/src/components/`   |
 | UI/UX                    | Componentes custom, `lucide-react`, `sonner`, Radix UI       | `frontend/src/components/`                           |
+| Testes Frontend          | Vitest, @testing-library/react, @testing-library/jest-dom, jsdom | `frontend/vite.config.ts`, `frontend/src/setupTests.ts`, `frontend/package.json` |
 | Estado & Serviços        | Hooks React (`useState`, `useEffect`, `useCallback`), `fetch` | `frontend/src/services/api.ts`                       |
 | Autenticação             | Supabase JS (`@supabase/supabase-js` v2.77)                   | `frontend/src/services/supabase.ts`                  |
 | Backend HTTP             | FastAPI, Uvicorn                                              | `backend/src/web/app.py`, `backend/src/main.py`      |
@@ -65,6 +66,13 @@ Requisitos de ambiente:
 - **Node.js ≥ 18** (verificar com `node -v`).
 - **npm ≥ 9**.
 - **Python ≥ 3.9** com `pip` disponível.
+
+### Testes do Frontend
+
+- Ambiente habilitado com Vitest e Testing Library (`npm install -D vitest @testing-library/react @testing-library/jest-dom jsdom`).
+- Configuração central em `frontend/vite.config.ts` (`test.globals`, `environment: 'jsdom'`, `setupFiles`).
+- Arquivo de setup `frontend/src/setupTests.ts` importa `@testing-library/jest-dom`.
+- Execute `npm run test -- --run` para rodar a suíte no terminal (é necessário ter arquivos `*.test.ts(x)` ou `*.spec.ts(x)`).
 
 ---
 
@@ -244,5 +252,6 @@ Fonte da verdade entre as interações do frontend (React) e a API do backend (F
 - **Mar/2025** – Imports absolutos no backend e criação de `QwenClient`, evitando erros de import e centralizando integração com DashScope.
 - **Mar/2025** – Prompts dos agentes migrados para arquivos dedicados; documentação revisada com setup detalhado, contratos de API e passos de operação.
 - **Abr/2025** – Frontend sincronizado com layout refinado da pasta “Tela Inicial do App de IA”: novo componente `Sidebar` reutilizável, busca com padding ajustado, seções colapsáveis fechadas por padrão ao abrir o menu e eliminação do botão redundante “Nova Conversa”.
+- **Abr/2025** – Ambiente de testes do frontend padronizado com Vitest + Testing Library; script `npm run test` disponível e setup global documentado.
 
 > Para detalhes finos, consulte o histórico do Git (`git log`) ou PRs correspondentes.

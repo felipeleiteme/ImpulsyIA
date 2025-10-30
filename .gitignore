@@ -73,3 +73,6 @@ tmp/
 temp/
 **/tmp/
 **/temp/
+
+# Pasta temporária para atualizações do Figma
+_figma_update/

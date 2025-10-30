@@ -92,3 +92,74 @@ Após iniciar ambos, backend e frontend:
   ```
 
 Se tudo estiver configurado corretamente, a comunicação entre seu frontend e backend está funcionando!
+
+## Merge Inteligente (Template de Prompt)
+
+Use este template ao acionar o Codex CLI para aplicar atualizações vindas do Figma:
+
+```text
+Estou na raiz do meu projeto impulsyia.
+
+Acabei de baixar as atualizações do Figma na pasta _figma_update/.
+
+O Figma me informou que alterou os seguintes arquivos: [Cole o changelog do Figma aqui].
+
+Sua Tarefa: Faça o merge cirúrgico, copiando e sobrescrevendo APENAS os arquivos de UI mencionados no changelog da pasta _figma_update/frontend/ para a minha pasta frontend/.
+
+REGRAS DE PROTEÇÃO (CRÍTICO):
+
+NÃO sobrescreva, em hipótese alguma, arquivos como vite.config.ts, package.json ou tailwind.config.js.
+
+NÃO toque na minha pasta de serviços frontend/src/services/.
+
+Apenas copie os componentes de UI (como frontend/src/components/ui/card.tsx ou frontend/src/components/LoginPage.tsx) que o Figma alterou.
+```
+
+## Configurar Ambiente de Testes do Frontend (Setup de 5 Minutos)
+
+Execute estes passos uma única vez para habilitar o Vitest no projeto:
+
+1. **Instale as dependências de teste** (na pasta `frontend/`):
+   ```bash
+   npm install -D vitest @testing-library/react @testing-library/jest-dom jsdom
+   ```
+   - `vitest`: framework de testes.
+   - `@testing-library/react`: renderiza componentes e simula interações.
+   - `@testing-library/jest-dom`: adiciona matchers como `.toBeInTheDocument()`.
+   - `jsdom`: simula um ambiente de navegador no terminal.
+
+2. **Atualize o Vite** (`frontend/vite.config.ts`) adicionando a referência do Vitest e o bloco de configuração:
+   ```ts
+   /// <reference types="vitest" />
+
+   import { defineConfig } from 'vite';
+   // ...
+
+   export default defineConfig({
+     plugins: [react()],
+     test: {
+       globals: true,
+       environment: 'jsdom',
+       setupFiles: './src/setupTests.ts',
+     },
+     // restante da configuração...
+   });
+   ```
+
+3. **Crie o arquivo de setup** (`frontend/src/setupTests.ts`):
+   ```ts
+   import '@testing-library/jest-dom';
+   ```
+
+4. **Adicione o script de testes** (`frontend/package.json`):
+   ```json
+   "scripts": {
+     "dev": "vite",
+     "build": "vite build",
+     "test": "vitest"
+   }
+   ```
+
+5. **Rodar os testes**:
+   - Execute `npm run test -- --run` para rodar os testes em modo CLI.
+   - Somente testes com sufixo `.test.tsx` ou `.spec.tsx` (ou `.ts`) serão detectados.
