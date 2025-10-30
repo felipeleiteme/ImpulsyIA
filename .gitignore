@@ -48,7 +48,7 @@ backend/venv/
 backend/venv2/
 backend/venv3/
 backend/env/
-backend/.env/
+backend/.env*
 backend/.venv/
 
 # Frontend
@@ -64,7 +64,6 @@ frontend/.env.production.local
 frontend/.DS_Store
 frontend/node_modules/.cache
 frontend/yarn.lock
-frontend/package-lock.json
 
 # Frontend-old (pastas antigas)
 frontend-old/
