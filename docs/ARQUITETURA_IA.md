@@ -1,158 +1,255 @@
 # Arquitetura ImpulsyIA
 
-Documento vivo que consolida stack, decisões, regras de negócio e estrutura de dados do projeto. Atualizar sempre que novos fluxos ou integrações forem adicionados.
+Documento vivo do projeto. Atualize sempre após alterações estruturais, integrações ou decisões relevantes para que agentes humanos ou de código tenham contexto completo.
 
 ---
 
 ## 1. Visão Geral
 
-- Arquitetura cliente-servidor separando **frontend React/Vite** (`frontend/`) e **backend FastAPI** (`backend/`).
-- Frontend consome a API via `fetch` centralizado (`frontend/src/services/api.ts`) e mantém estado no componente raiz `App.tsx`.
-- Backend expõe REST endpoints (FastAPI + Uvicorn) e serve de orquestrador entre autenticação Supabase e o provedor LLM Qwen (DashScope).
-- Execução local orquestrada por `./start.sh`, que inicia backend (porta 8000) e frontend (porta 3000 com proxy `/api`).
+- Arquitetura cliente-servidor: **frontend React/Vite** (`frontend/`) consome **API FastAPI** (`backend/`).
+- Experiência centrada em 7 agentes de IA, com prompts definidos no backend e estado de conversa mantido no frontend.
+- Autenticação e perfil: **Supabase Auth**; tokens Supabase são obrigatórios nas rotas protegidas.
+- IA/LLM: modelo **Qwen Plus** (DashScope) acessado por endpoint compatível com OpenAI.
+- Execução local: script `./start.sh` levanta backend (porta 8000) e frontend (porta 3000 com proxy `/api`).
 
-Fluxo alto nível:
+Fluxo macro:
 ```
 Usuário ─► Frontend (React) ─► /api/* ─► Backend FastAPI ─► DashScope (Qwen)
-                                                └─► Validação JWT com Supabase
+                                              └─► Validação JWT (Supabase)
 ```
 
 ---
 
-## 2. Stack de Tecnologia
+## 2. Estrutura de Pastas
 
-| Camada / Domínio        | Tecnologias principais                                                   | Referências chaves                                   |
-|-------------------------|---------------------------------------------------------------------------|------------------------------------------------------|
-| Frontend                | React 18, TypeScript, Vite, Tailwind, lucide-react                       | `frontend/src/App.tsx`, `frontend/src/components/`   |
-| Estado & Serviços       | Hooks React (`useState`, `useEffect`, `useCallback`), `fetch` via API     | `frontend/src/services/api.ts`                       |
-| Autenticação            | Supabase Auth (email/senha + OAuth)                                       | `frontend/src/services/supabase.ts`                  |
-| Backend Web             | FastAPI, Uvicorn                                                          | `backend/src/web/app.py`, `backend/src/main.py`      |
-| Segurança               | python-jose para validar JWT, OAuth2PasswordBearer                        | `backend/src/security/token.py`                      |
-| IA / LLM                | Qwen (DashScope) via SDK OpenAI-compatible                                | `backend/src/llms/qwen_client.py`                    |
-| Orquestração de agentes | Dataclasses + prompts estáticos                                           | `backend/src/agents/definitions.py` + `prompts/`     |
-| Infra local             | Script `start.sh`, logs dedicados (`frontend.log`, `backend.log`)         | raiz do repositório                                  |
-
-Variáveis sensíveis configuradas em `.env` (backend) e `.env` (frontend) carregadas via `dotenv` ou `import.meta.env`.
-
----
-
-## 3. Decisões de Arquitetura
-
-- **FastAPI particionado por routers** (`backend/src/web/routers/`): isolamento por domínio (auth, chat, payments, agents) facilita manutenção.
-- **Imports absolutos no backend**: padronizados para execução com `PYTHONPATH=src` e evitar erros `attempted relative import`.
-- **Qwen encapsulado em `QwenClient`**: valida API key ao instanciar e converte respostas do SDK para payload interno. Permite troca de provedor minimizando impacto.
-- **Prompts versionados**: personas dos agentes ficam em textos (UTF-8) sob `backend/src/agents/prompts/`, carregados por `AgentDefinition`.
-- **Estado de conversa client-side**: histórico por agente armazenado em `agentSessions` no frontend; backend permanece stateless.
-- **Hero screen pós-login**: após autenticar, `journeyStarted` permanece `false` até o usuário enviar a primeira mensagem (UI hero em `frontend/src/App.tsx` linhas ~360-420). Decisão dá controle ao usuário sobre início da jornada.
-- **Proxy Vite** (`frontend/vite.config.ts`): roteia `/api` para `http://localhost:8000`, eliminando CORS no desenvolvimento.
-- **Supabase como fonte de verdade**: listener `supabase.auth.onAuthStateChange` mantém sincronismo de perfil e premium flag.
+```
+ImpulsyIA/
+├── backend/
+│   ├── requirements.txt         # Dependências Python
+│   └── src/
+│       ├── agents/              # Definições, prompts e serviço de agentes
+│       ├── core/                # Configuração (.env, constantes)
+│       ├── llms/                # Clientes LLM (Qwen)
+│       ├── security/            # OAuth/JWT helpers
+│       ├── web/                 # Aplicação FastAPI (app + routers)
+│       └── main.py              # Entry point uvicorn
+├── frontend/
+│   ├── package.json             # Dependências Node
+│   └── src/
+│       ├── App.tsx              # Componente raiz/composição de páginas
+│       ├── components/          # UI reutilizável e páginas (Login, Perfil...)
+│       └── services/            # Clientes HTTP e Supabase
+├── docs/                        # Documentação (este arquivo, initialization...)
+├── start.sh                     # Script que sobe backend+frontend
+├── backend.log / frontend.log   # Logs produzidos por start.sh
+└── README.md                    # Guia rápido
+```
 
 ---
 
-## 4. Regras de Negócio Centrais
+## 3. Tecnologia Utilizada
 
-- **Autenticação obrigatória**: qualquer interação com agentes requer sessão válida do Supabase; backend rejeita requisições sem JWT pelo middleware `get_current_user`.
-- **Tela inicial obrigatória**: após login o usuário vê a hero page (texto “ImpulsyIA…”). A primeira ação deve ser digitar/enviar mensagem no CTA central.
-- **Seleção de agentes**: lista de agentes vem de `/api/agents/`; cada agente possui `system_prompt` e `default_model` definidos em código.
-- **Mensagens válidas**: backend aceita apenas roles `user`, `assistant` ou `system` com conteúdo não vazio (validação em `backend/src/agents/service.py`).
-- **Reset de chat**: “Nova Conversa” limpa histórico local e mantém usuário na UI de chat, mas não altera prompts estáticos.
-- **Pagamentos & Perfil**: páginas de perfil/assinatura/checkout são acessíveis via menu; estados controlados por `showProfile`, `showSubscription`, `showCheckout`.
-- **Dependência das credenciais**: sem `SUPABASE_JWT_SECRET` ou `DASHSCOPE_API_KEY` configurados, backend aborta com erro explícito (segurança + feedback de configuração).
+| Domínio                  | Tecnologias / Bibliotecas                                    | Referências principais                               |
+|--------------------------|---------------------------------------------------------------|------------------------------------------------------|
+| Frontend                 | React 18, TypeScript, Vite, Tailwind CSS                     | `frontend/src/App.tsx`, `frontend/src/components/`   |
+| UI/UX                    | Componentes custom, `lucide-react`, `sonner`, Radix UI       | `frontend/src/components/`                           |
+| Estado & Serviços        | Hooks React (`useState`, `useEffect`, `useCallback`), `fetch` | `frontend/src/services/api.ts`                       |
+| Autenticação             | Supabase JS (`@supabase/supabase-js` v2.77)                   | `frontend/src/services/supabase.ts`                  |
+| Backend HTTP             | FastAPI, Uvicorn                                              | `backend/src/web/app.py`, `backend/src/main.py`      |
+| Segurança                | `python-jose`, `OAuth2PasswordBearer`, `passlib[bcrypt]`     | `backend/src/security/token.py`                      |
+| Integração LLM           | SDK OpenAI apontado para DashScope                            | `backend/src/llms/qwen_client.py`                    |
+| Orquestração de agentes  | Dataclasses + prompts UTF-8                                   | `backend/src/agents/`                                |
+| Automação local          | Script bash (`start.sh`), logs dedicados                     | raiz                                                 |
+
+Requisitos de ambiente:
+- **Node.js ≥ 18** (verificar com `node -v`).
+- **npm ≥ 9**.
+- **Python ≥ 3.9** com `pip` disponível.
 
 ---
 
-## 5. Esquema de Dados (Resumido)
+## 4. Decisões de Arquitetura
+
+- **Routers FastAPI** (`backend/src/web/routers/`): separa domínios (`auth`, `chat`, `agents`, `payments`).
+- **Imports absolutos** com `PYTHONPATH=src`: evita erros de módulo relativos e permite rodar scripts diretos.
+- **Wrapper QwenClient** valida `DASHSCOPE_API_KEY` antes de qualquer uso e encapsula respostas do SDK OpenAI.
+- **Prompts versionados** (arquivos `.txt` em `backend/src/agents/prompts/`) permitem ajustes de personas sem mexer em código.
+- **Front controla jornada** via estado `journeyStarted`: usuário permanece na tela hero pós-login até enviar mensagem.
+- **Proxy dev** (`frontend/vite.config.ts`): roteia `/api` para `http://localhost:8000`, evitando CORS durante desenvolvimento.
+- **Supabase como verdade de sessão**: listener `supabase.auth.onAuthStateChange` mantém UI em sincronia.
+
+---
+
+## 5. Configuração de Ambiente
+
+### Backend (`backend/.env`)
+```
+SUPABASE_JWT_SECRET="<jwt_secret_do_supabase>"
+DASHSCOPE_API_KEY="<api_key_dashscope>"
+QWEN_MODEL_NAME="qwen-plus"
+QWEN_BASE_URL="https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+```
+
+### Frontend (`frontend/.env`)
+```
+VITE_SUPABASE_URL="https://<instancia>.supabase.co"
+VITE_SUPABASE_ANON_KEY="<anon_key>"
+```
+
+- `backend/src/core/config.py` carrega variáveis com `python-dotenv`.
+- O hostname `dashscope-intl.aliyuncs.com` deve estar acessível; caso contrário o chat retorna 500.
+- No frontend, as variáveis `import.meta.env` configuram o cliente Supabase.
+
+---
+
+## 6. Passo a Passo de Inicialização
+
+### Opção A: Script único
+```bash
+./start.sh
+# Backend → http://localhost:8000
+# Frontend → http://localhost:3000 (ou próxima porta livre)
+```
+
+### Opção B: Manual (dois terminais)
+```bash
+# Terminal 1 – backend
+cd backend
+python3 -m pip install -r requirements.txt
+cp .env.example .env  # e preencha as variáveis
+PYTHONPATH=src python3 -m src.main
+
+# Terminal 2 – frontend
+cd frontend
+npm install
+npm run dev
+```
+
+### Testes / Builds
+- Frontend: `npm run build` gera artefatos em `frontend/build/`.
+- Backend: não há suíte de testes configurada; recomenda-se adicionar futuramente.
+
+---
+
+## 7. Regras de Negócio Centrais
+
+1. **Autenticação obrigatória**: rotas de agentes (`/api/agents/*`) exigem JWT Supabase válido. Sem `SUPABASE_JWT_SECRET`, backend retorna 500.
+2. **Hero antes do chat**: usuário autenticado permanece na tela inicial até enviar primeira mensagem (`journeyStarted` muda para `true`).
+3. **Agentes pré-definidos**: sete agentes com prompts estáticos e modelo padrão `qwen-plus`.
+4. **Validação de mensagens**: backend aceita apenas roles `user|assistant|system` com conteúdo não vazio (ver `agents/service.py`).
+5. **Reset de conversa**: botão “Nova Conversa” limpa histórico local e reinsere mensagem introdutória do agente.
+6. **Stubs em auth/chat streaming/payments**: rotas existem, mas precisam de implementação real.
+7. **Dependências críticas**: ausência de `DASHSCOPE_API_KEY` gera `ValueError`; ausência de internet para DashScope → `RuntimeError` (500).
+
+---
+
+## 8. Esquema de Dados (Resumido)
 
 ### Backend
-
-- `AgentDefinition` (dataclass):
-  - `id`, `name`, `description`, `system_prompt`, `default_model`.
-- `run_agent_chat` entrada:
-  - `agent_id: str`
-  - `messages: List[Dict[str, str]]` (`role`, `content`)
-  - opções opcionais `model`, `temperature`, `max_tokens`.
-- `run_agent_chat` saída:
-  - `{ agent_id, agent_name, model, message, usage }`.
-- `core/config.py`:
-  - Lê `.env`: `SUPABASE_JWT_SECRET`, `DASHSCOPE_API_KEY`, `QWEN_BASE_URL`, `QWEN_MODEL_NAME`.
-- Segurança:
-  - `security/token.py` decodifica JWT Supabase (`payload['sub']` → `user_id`).
-- Banco de dados próprio ainda não implementado; o módulo `database/connection.py` está reservado para usos futuros.
+- `AgentDefinition` (`backend/src/agents/definitions.py`): `{ id, name, description, system_prompt, default_model }`.
+- `run_agent_chat` (`backend/src/agents/service.py`):
+  - Entrada: `agent_id`, lista de mensagens (`role`, `content`), opções (`model`, `temperature`, `max_tokens`).
+  - Saída: `{ agent_id, agent_name, model, message, usage }`.
+- `get_current_user` (`backend/src/security/token.py`): retorna `{ user_id, payload }` extraídos do JWT Supabase.
+- Persistência própria ainda não existe; módulo `database/` vazio para futura expansão.
 
 ### Frontend
-
-- `ConversationMessage`:
-  - `id: string`, `type: 'assistant' | 'user'`, `content: string`.
-- Estado:
-  - `chats: AgentInfo[]` (id, name, description).
-  - `agentSessions: Record<agentId, ConversationMessage[]>`.
-  - `journeyStarted: boolean` define transição hero ↔ chat.
-- API payloads (`frontend/src/services/api.ts`):
-  - `agentsAPI.list()` → `[{ id, name, description }]`.
-  - `agentsAPI.chat()` → `{ agent_id, agent_name, model, message, usage? }`.
+- `ConversationMessage`: `{ id: string, type: 'user' | 'assistant', content: string }`.
+- Estado principal (`App.tsx`):
+  - `chats`, `agentSessions`, `isAuthenticated`, `journeyStarted`, `currentChatId`, `isPremium`, etc.
+- Serviços (`frontend/src/services/api.ts`):
+  - `authAPI`, `chatAPI`, `agentsAPI`, `paymentsAPI` centralizam chamadas `fetch`.
 
 ---
 
-## 6. Fluxos Principais
+## 9. Contratos de API (Resumido)
 
-1. **Login**
-   - `LoginPage` chama `supabase.auth.signInWithPassword`.
-   - Listener sincroniza estado, popula `userProfile` e `isPremium`, mantém usuário na hero page.
-2. **Listagem de agentes**
-   - `loadAgents` é executado quando autenticado; popula `chats` e prepara mensagens introdutórias (apenas em memória).
-3. **Primeira mensagem**
-   - Usuário digita no CTA hero, `handleSendMessage` cria mensagem `user`, seta `journeyStarted=true` e consulta `/api/agents/{id}/chat`.
-   - Backend injeta system prompt, chama Qwen, retorna resposta agregada ao chat.
-4. **Segurança**
-   - Endpoint `/api/agents/{agent_id}/chat` exige `Authorization: Bearer <jwt Supabase>`.
-   - Token inválido → 401 via `get_current_user`.
-5. **Pagamentos / Perfil**
-   - Rotas de UI apenas, sem backend efetivo; hook de navegação altera `showProfile`, `showSubscription`, `showCheckout`.
+### Autenticação (stub)
+```
+POST /api/auth/token
+Body: { "email": "user@example.com", "password": "..." }
+Resposta atual: { "access_token": "fake-jwt-token", "token_type": "bearer" }
+(Substituir por fluxo real de Supabase/token próprio)
+```
+
+### Chat Streaming (stub)
+```
+POST /api/chat/stream
+Headers: Authorization: Bearer <jwt_supabase>
+Body: { "message": "..." }
+Resposta: { "message": "Streaming response for user <id>" }
+```
+
+### Listar agentes
+``+
+GET /api/agents/
+Headers: Authorization: Bearer <jwt_supabase>
+Resposta: [ { "id": "mestre_mapeamento", "name": "Mestre do Mapeamento", "description": "..." }, ... ]
+```
+
+### Chat com agente
+```
+POST /api/agents/{agent_id}/chat
+Headers: Authorization: Bearer <jwt_supabase>
+Body: {
+  "messages": [
+    { "role": "user", "content": "Olá" },
+    { "role": "assistant", "content": "Resposta anterior" }
+  ],
+  "model": "qwen-plus",     // opcional
+  "temperature": 0.5,        // opcional
+  "max_tokens": 512          // opcional
+}
+
+Resposta (200): {
+  "agent_id": "mestre_mapeamento",
+  "agent_name": "Mestre do Mapeamento",
+  "model": "qwen-plus",
+  "message": "... resposta do agente ...",
+  "usage": { ... }            // pode ser null se o provedor não retornar
+}
+
+Erros possíveis:
+- 401 se token inválido/ausente.
+- 404 se `agent_id` não existir.
+- 500 se o provedor Qwen retornar erro (mensagem inclui "Qwen API error: ...").
+```
+
+### Webhook de pagamentos (stub)
+```
+POST /api/payments/webhook
+Body: { ... }
+Resposta: { "status": "received" }
+```
+
+> **Observação:** por enquanto o frontend ainda não envia o header `Authorization` nas requisições; ajuste futuro necessário para produção.
 
 ---
 
-## 7. Integração e Infraestrutura
+## 10. Operação e Integrações
 
-- **Proxy Vite**: `/api` redirecionado para `http://localhost:8000` (config padrão no `server.proxy`).
-- **CORS**: `CORSMiddleware` libera tudo em desenvolvimento; em produção restringir a domínios confiáveis.
-- **Script de inicialização**: `./start.sh` mata processos nas portas 3000/8000, inicia backend (`PYTHONPATH=src python3 -m src.main`) e frontend (`npm run dev`), direcionando logs para arquivos na raiz.
-- **Ambiente**:
-  - Backend `.env` (não versionado com credenciais reais):
-    ```
-    SUPABASE_JWT_SECRET="..."
-    DASHSCOPE_API_KEY="..."
-    QWEN_MODEL_NAME="qwen-plus"
-    QWEN_BASE_URL="https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-    ```
-  - Frontend `.env` (chaves públicas Supabase):
-    ```
-    VITE_SUPABASE_URL="..."
-    VITE_SUPABASE_ANON_KEY="..."
-    ```
-- **Logs**:
-  - `backend.log` e `frontend.log` úteis para diagnóstico pós-execução do script.
+- **Logs**: `start.sh` grava stdout/stderr em `backend.log` e `frontend.log`.
+- **Diagnóstico**: erros DashScope aparecem como `RuntimeError` no backend. Verifique conectividade com `curl -I https://dashscope-intl.aliyuncs.com/compatible-mode/v1`.
+- **CORS**: desenvolvimento liberado para `*`; restringir em produção.
+- **Dependências externas**: Supabase (auth/email), DashScope (LLM), potencial Mercadopago (webhook placeholder).
 
 ---
 
-## 8. Observabilidade & Qualidade
+## 11. Riscos, Pendências e Próximos Passos
 
-- Backend: Uvicorn fornece access logs. Em caso de erro, stacktrace aparece no console e em `backend.log`.
-- Frontend: erros capturados com `console.error` e exibidos ao usuário via `toast` (biblioteca `sonner`).
-- Recomendações futuras:
-  - Persistir uso do Qwen (`response.usage`) para métricas.
-  - Adicionar testes automatizados para serviços e componentes críticos.
-  - Instrumentar monitoramento/telemetria (ex.: Sentry, Supabase logs).
-
----
-
-## 9. Próximas Evoluções Sugeridas
-
-- Implementar armazenamento de conversas ou resumo no Supabase/Postgres.
-- Completar fluxo real de pagamentos (atualmente stub em `backend/src/web/routers/payments.py`).
-- Tratar limites de taxa (módulo `backend/src/limits/`) e governança de custos DashScope.
-- Endurecer segurança para produção (HTTPS, CORS restrito, rotação de segredos).
-- Criar testes fim-a-fim cobrindo login → envio de mensagem → recebimento de resposta.
+- Implementar autenticação real no backend ou migrar totalmente para Supabase (Edge Functions / RLS).
+- Adicionar envio de header `Authorization` no frontend para alinhar com `get_current_user`.
+- Converter `/api/chat/stream` em streaming real (LangChain, SSE) ou remover.
+- Persistir histórico de conversas e métricas (Supabase/Postgres), registrar uso de tokens do Qwen.
+- Reforçar segurança (HTTPS, rotação de segredos, CORS restritivo, rate limiting em `backend/src/limits/`).
+- Adicionar cobertura de testes (unitários e integração).
 
 ---
 
-> **Histórico recente**: correção dos imports backend para evitar erros de módulo, configuração definitiva do `.env` com credenciais DashScope e alteração de UX pós-login (usuário permanece na hero até enviar primeira mensagem).
+## 12. Histórico de Atualizações Recentes
+
+- **Mar/2025** – UX pós-login ajustada: usuário permanece na tela hero até enviar primeira mensagem (controle `journeyStarted`).
+- **Mar/2025** – Imports absolutos no backend e criação de `QwenClient`, evitando erros de import e centralizando integração com DashScope.
+- **Mar/2025** – Prompts dos agentes migrados para arquivos dedicados; documentação revisada com setup detalhado, contratos de API e passos de operação.
+
+> Para detalhes finos, consulte o histórico do Git (`git log`) ou PRs correspondentes.
