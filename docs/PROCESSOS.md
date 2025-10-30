@@ -1,157 +1,47 @@
-# Inicialização do Projeto ImpulsyIA
+# Manual de Processos ImpulsyIA
 
-Este documento descreve os passos para inicializar e executar o projeto ImpulsyIA (backend e frontend) em seu ambiente de desenvolvimento.
+Documento operacional do monorepo. Ele explica como o Product Owner (PO) conduz o “Maestro de IAs” — combinando agentes de design, QA e código — para evoluir o projeto com segurança. Consulte em paralelo:
 
-## Pré-requisitos
+- `docs/ARQUITETURA_IA.md`: visão técnica, camadas e integrações.
+- `docs/API_CONTRACT.md`: contratos que os fluxos de trabalho precisam respeitar.
 
-- Node.js (v14 ou superior)
-- Python 3.9 ou superior
-- npm (geralmente instalado com o Node.js)
+---
 
-## 1. Iniciar o Backend (API FastAPI)
+## 1. O Manifesto — Orquestração de IAs
 
-1. **Navegue até o diretório do backend:**
-   ```bash
-   cd /Users/Felipe/Documents/Projetos/Agentes/ImpulsyIA/backend
-   ```
+- **Papel do Maestro (humano/PO):** liderar o ciclo de produto e decidir o que precisa ser construído. Ele não escreve código diretamente; orquestra IAs especializadas.
+- **IAs especializadas:**
+  - **Figma Maker:** gera/atualiza layouts e entrega um changelog com arquivos de UI alterados.
+  - **Loom + Narração Natural:** captura expectativas de negócio sem jargão técnico.
+  - **Gemini (Nuvem):** age como engenheiro de QA, traduzindo critérios de aceite em prompts e testes automatizados.
+  - **Codex CLI (Local):** executa merges cirúrgicos e implementa código seguindo instruções de alto nível.
+- **Princípio central:** cada IA cuida de uma fase do fluxo. O humano garante contexto (arquitetura, contratos, dados sensíveis) e valida o resultado final.
 
-2. **Instale as dependências do backend (se necessário):**
-   ```bash
-   python3 -m pip install -r requirements.txt
-   ```
-   *Nota: Se você encontrar problemas de permissão, pode usar `python3 -m pip install -r requirements.txt --user`*
+---
 
-3. **Crie o arquivo .env (se não existir):**
-   ```bash
-   cp .env.example .env
-   ```
+## 2. Setup Inicial do Workflow (Executar Apenas Uma Vez)
 
-4. **Inicie o servidor Uvicorn:**
-   ```bash
-   PYTHONPATH=src python3 -m uvicorn src.web.app:app --host 0.0.0.0 --port 8000
-   ```
+### 2.1. Configurar o Ambiente de Testes (Vigia)
 
-   O backend estará disponível em `http://localhost:8000`. Mantenha este terminal aberto.
-
-
-   cd /Users/Felipe/Documents/Projetos/Agentes/ImpulsyIA/backend
-  PYTHONPATH=src python3 -m uvicorn src.web.app:app --host 0.0.0.0 --port 8000
-  
-
-## 2. Iniciar o Frontend (Aplicação React com Vite)
-
-1. **Abra um novo terminal.**
-
-2. **Navegue até o diretório do frontend:**
-   ```bash
-   cd /Users/Felipe/Documents/Projetos/Agentes/ImpulsyIA/frontend
-   ```
-
-3. **Instale as dependências do frontend:**
-   ```bash
-   npm install
-   ```
-
-4. **Inicie o servidor de desenvolvimento do Vite:**
-   ```bash
-   npm run dev
-   ```
-
-   O frontend estará disponível em `http://localhost:3007` (ou a próxima porta disponível se 3000 estiver ocupada). Mantenha este terminal aberto.
-
-## 3. Verificar a Integração (Teste "Olá do Backend")
-
-Após iniciar ambos, backend e frontend:
-
-1. Abra seu navegador e acesse o endereço do frontend (geralmente `http://localhost:3007`).
-2. Você deverá ver a interface do ImpulsyIA.
-3. As chamadas de API (como login, envio de mensagens de chat) devem funcionar corretamente, graças à configuração de proxy que encaminha as requisições `/api/*` do frontend para o backend.
-
-## 4. Configuração de Proxy (Detalhes Técnicos)
-
-- O arquivo `vite.config.ts` no frontend contém uma configuração de proxy que redireciona todas as requisições para `/api/*` para `http://localhost:8000` (onde o backend está rodando).
-- O backend tem CORS configurado para permitir requisições do frontend.
-- O frontend faz chamadas de API através do módulo centralizado em `src/services/api.ts`.
-
-## 5. Solução de Problemas Comuns
-
-### Porta 3000 indisponível:
-- O Vite usará automaticamente a próxima porta disponível (ex: 3001, 3007, etc.)
-- Verifique no terminal onde você iniciou o frontend qual porta está sendo usada
-
-### Erros de dependências do Python:
-- Certifique-se de ter o Python 3.9 ou superior
-- Tente reinstalar as dependências com: `python3 -m pip install -r requirements.txt`
-
-### Erros de dependências do Node.js:
-- Certifique-se de ter o Node.js v14 ou superior
-- Tente limpar o cache e reinstalar: 
-  ```bash
-  rm -rf node_modules
-  npm install
-  ```
-
-Se tudo estiver configurado corretamente, a comunicação entre seu frontend e backend está funcionando!
-
-## Merge Inteligente (Template de Prompt)
-
-Use este template ao acionar o Codex CLI para aplicar atualizações vindas do Figma:
-
-```text
-Estou na raiz do meu projeto impulsyia.
-
-Acabei de baixar as atualizações do Figma na pasta _figma_update/.
-
-O Figma me informou que alterou os seguintes arquivos: [Cole o changelog do Figma aqui].
-
-Sua Tarefa: Faça o merge cirúrgico, copiando e sobrescrevendo APENAS os arquivos de UI mencionados no changelog da pasta _figma_update/frontend/ para a minha pasta frontend/.
-
-REGRAS DE PROTEÇÃO (CRÍTICO):
-
-NÃO sobrescreva, em hipótese alguma, arquivos como vite.config.ts, package.json ou tailwind.config.js.
-
-NÃO toque na minha pasta de serviços frontend/src/services/.
-
-Apenas copie os componentes de UI (como frontend/src/components/ui/card.tsx ou frontend/src/components/LoginPage.tsx) que o Figma alterou.
-```
-
-## Configurar Ambiente de Testes do Frontend (Setup de 5 Minutos)
-
-Execute estes passos uma única vez para habilitar o Vitest no projeto:
-
-1. **Instale as dependências de teste** (na pasta `frontend/`):
+1. **Instalar dependências** (pasta `frontend/`):
    ```bash
    npm install -D vitest @testing-library/react @testing-library/jest-dom jsdom
    ```
-   - `vitest`: framework de testes.
-   - `@testing-library/react`: renderiza componentes e simula interações.
-   - `@testing-library/jest-dom`: adiciona matchers como `.toBeInTheDocument()`.
-   - `jsdom`: simula um ambiente de navegador no terminal.
-
-2. **Atualize o Vite** (`frontend/vite.config.ts`) adicionando a referência do Vitest e o bloco de configuração:
-   ```ts
-   /// <reference types="vitest" />
-
-   import { defineConfig } from 'vite';
-   // ...
-
-   export default defineConfig({
-     plugins: [react()],
+2. **Configurar o Vite** (`frontend/vite.config.ts`):
+   - Adicionar `/// <reference types="vitest" />` no topo.
+   - Incluir o bloco `test`:
+     ```ts
      test: {
        globals: true,
        environment: 'jsdom',
        setupFiles: './src/setupTests.ts',
      },
-     // restante da configuração...
-   });
-   ```
-
-3. **Crie o arquivo de setup** (`frontend/src/setupTests.ts`):
+     ```
+3. **Criar o setup global** (`frontend/src/setupTests.ts`):
    ```ts
    import '@testing-library/jest-dom';
    ```
-
-4. **Adicione o script de testes** (`frontend/package.json`):
+4. **Atualizar scripts NPM** (`frontend/package.json`):
    ```json
    "scripts": {
      "dev": "vite",
@@ -159,59 +49,127 @@ Execute estes passos uma única vez para habilitar o Vitest no projeto:
      "test": "vitest"
    }
    ```
+5. **Rodar testes**:
+   ```bash
+   npm run test -- --run
+   ```
+   *(Falhará até existir algum arquivo `*.test.ts(x)` — comportamento esperado no setup.)*
 
-5. **Rodar os testes**:
-   - Execute `npm run test -- --run` para rodar os testes em modo CLI.
-   - Somente testes com sufixo `.test.tsx` ou `.spec.tsx` (ou `.ts`) serão detectados.
+### 2.2. Configurar a “Quarentena” do Figma
 
-## Fluxo QA + Automatização com Loom, Gemini e Codex
-
-### Fase 2 – Gravar o Loom (Jeito Natural de PO)
-
-Ligue o Loom e navegue pela interface narrando **como você espera que a feature funcione**, sem termos técnicos.
-
-Exemplo de narração V3:
-
-> "Ok, Gemini, vou te mostrar como a tela de login deve funcionar.
->
-> Olha, quando a página carrega, o botão 'Entrar' aqui embaixo... tá vendo? Ele tá apagado, eu não consigo clicar.
->
-> Agora, se eu digitar 'teste@teste.com' aqui no campo de e-mail... e 'senha123' aqui no campo de senha... pronto! Viu? O botão 'Entrar' agora acendeu, ficou azul. Agora eu consigo clicar.
->
-> É exatamente esse comportamento que eu quero."
-
-### Fase 3 – Novo "Prompt Perfeito" (Gemini como QA)
-
-Envie o vídeo e a URL do repo ao Gemini com o prompt:
-
+Adicionar ao final do `.gitignore` (raiz do projeto):
 ```
-Olá Gemini.
-
-Assista a este vídeo: [link_do_seu_video_loom]
-
-Analise meu repositório: [URL_do_seu_repo_github_impulsyia]
-
-Sua Tarefa (A "Tradução"): No vídeo, eu demonstro o comportamento que eu espero de uma feature (os "critérios de aceite"). Você deve atuar como um Engenheiro de QA Sênior.
-
-Seu Processo de Análise:
-
-Assista ao vídeo para entender a REGRA DE NEGÓCIO (ex: "O botão 'Entrar' só habilita quando os campos de e-mail e senha estão preenchidos").
-
-Leia o código-fonte correspondente no repositório (ex: frontend/src/components/LoginPage.tsx) para encontrar os data-testids dos elementos que eu interagi.
-
-Conecte a regra de negócio (do vídeo) com os data-testids (do código).
-
-Gere 2 Saídas:
-
-SAÍDA 1 (Prompt do Codex): O prompt perfeito para meu Codex CLI local implementar a lógica da feature.
-
-SAÍDA 2 (Código de Teste): O código de teste completo (Vitest + React Testing Library) que automatiza a regra de negócio que eu demonstrei. O teste deve usar os data-testids que você encontrou no código.
+# Pasta temporária para atualizações do Figma
+_figma_update/
 ```
+Essa pasta fica fora do versionamento e recebe os ZIPs brutos exportados pelo Figma Maker.
 
-### Fase 4 – Workflow de Execução (RED-GREEN)
+---
 
-1. Cole o código de teste sugerido em um novo arquivo (ex.: `frontend/src/components/LoginPage.test.tsx`).
-2. Rode `npm test` em `frontend/`. O teste deve falhar inicialmente (**RED**).
-3. Use o prompt do Codex fornecido para implementar a feature localmente.
-4. Rode `npm test` novamente. O teste deve passar (**GREEN**).
-5. Sempre que atualizar `LoginPage.tsx` (manualmente ou via merge do Figma), execute `npm test` para vigiar regressões daquela regra de negócio.
+## 3. Fluxo de Trabalho 1 — Atualização de UI (Merge Inteligente do Figma)
+
+1. **PO solicita ao Figma Maker** o changelog com a lista de arquivos alterados.
+2. **Baixar o ZIP** gerado pelo Figma.
+3. **Preparar a quarentena:**
+   - Garantir que `_figma_update/` exista na raiz (ou criar).
+   - Limpar conteúdo anterior e descompactar o ZIP dentro de `_figma_update/`.
+   - Estrutura esperada:
+     ```
+     impulsyia/
+     ├── frontend/
+     │   └── src/...
+     └── _figma_update/
+         └── frontend/
+             └── src/...
+     ```
+4. **Executar o Codex CLI (local)** com o prompt:
+
+   ```text
+   Estou na raiz do meu projeto impulsyia.
+
+   Acabei de baixar as atualizações do Figma na pasta _figma_update/.
+
+   O Figma me informou que alterou os seguintes arquivos: [Cole o changelog do Figma aqui].
+
+   Sua Tarefa: Faça o merge cirúrgico, copiando e sobrescrevendo APENAS os arquivos de UI mencionados no changelog da pasta _figma_update/frontend/ para a minha pasta frontend/.
+
+   REGRAS DE PROTEÇÃO (CRÍTICO):
+
+   NÃO sobrescreva, em hipótese alguma, arquivos como vite.config.ts, package.json ou tailwind.config.js.
+
+   NÃO toque na minha pasta de serviços frontend/src/services/.
+
+   Apenas copie os componentes de UI (como frontend/src/components/ui/card.tsx ou frontend/src/components/LoginPage.tsx) que o Figma alterou.
+   ```
+
+5. **Validar e commitar**:
+   - Revisar `git status`.
+   - `npm run test -- --run` (garantir que o merge não quebrou regras de negócio cobertas).
+   - `git add`, `git commit -m "Atualiza UI com base no Figma"`, `git push`.
+
+---
+
+## 4. Fluxo de Trabalho 2 — Criação de Features (Hack do Loom)
+
+1. **Gravar o Loom (PO como narrador de negócio):**
+   - Mostrar a tela existente ou um protótipo.
+   - Descrever comportamento esperado em linguagem natural (Ex.: “O botão Entrar só habilita quando os campos estão preenchidos.”).
+2. **Enviar o material ao Gemini (nuvem) com o prompt de tradução:**
+
+   ```text
+   Olá Gemini.
+
+   Assista a este vídeo: [link_do_seu_video_loom]
+
+   Analise meu repositório: [URL_do_seu_repo_github_impulsyia]
+
+   Sua Tarefa (A "Tradução"): No vídeo, eu demonstro o comportamento que eu espero de uma feature (os "critérios de aceite"). Você deve atuar como um Engenheiro de QA Sênior.
+
+   Seu Processo de Análise:
+
+   Assista ao vídeo para entender a REGRA DE NEGÓCIO (ex: "O botão 'Entrar' só habilita quando os campos de e-mail e senha estão preenchidos").
+
+   Leia o código-fonte correspondente no repositório (ex: frontend/src/components/LoginPage.tsx) e consulte docs/API_CONTRACT.md para mapear data-testids e integridades de API.
+
+   Conecte a regra de negócio (do vídeo) com os data-testids (do código).
+
+   Gere 2 Saídas:
+
+   SAÍDA 1 (Prompt do Codex): O prompt perfeito para meu Codex CLI local implementar a lógica da feature.
+
+   SAÍDA 2 (Código de Teste): O código de teste completo (Vitest + React Testing Library) que automatiza a regra de negócio que eu demonstrei. O teste deve usar os data-testids que você encontrou no código.
+   ```
+
+3. **Aplicar as saídas do Gemini:**
+   - **Prompt do Codex:** usado no Codex CLI (local) para gerar/ajustar a feature.
+   - **Código de Teste:** criar arquivo em `frontend/src/.../*.test.tsx` com o conteúdo fornecido.
+4. **Executar ciclo TDD (RED → GREEN):**
+   - Rodar `npm test` e observar a falha inicial (RED).
+   - Rodar o prompt do Codex para implementar a lógica.
+   - Rodar `npm test` novamente até o teste passar (GREEN).
+   - Refatorar se necessário, mantendo cobertura.
+
+---
+
+## 5. Fluxo de Trabalho 3 — Testes e Rede de Segurança (O Vigia)
+
+- **Sem retro cobrir tudo de uma vez:** priorizar velocidade de entrega.
+- **Blindagem do caminho crítico:** criar testes retroativos imediatamente para:
+  1. Login e autenticação.
+  2. Carregamento/listagem de agentes.
+  3. Envio de mensagem e resposta do chat.
+- **Regra do Bom Escoteiro:** sempre que criar uma feature nova ou tocar em código existente, aplique o Fluxo 2 (Loom → Gemini → teste → Codex). Não mergear sem teste correspondente.
+- **Vigia de Regressão:** após qualquer Merge Inteligente (Fluxo 1), rodar `npm run test -- --run` para verificar se a nova UI preservou as regras de negócio cobertas pelos testes.
+- **Manutenção contínua:** atualizar `docs/ARQUITETURA_IA.md` e `docs/PROCESSOS.md` sempre que novos fluxos forem definidos ou quando o caminho crítico mudar.
+
+---
+
+## 6. Referências Rápidas
+
+- **Arquitetura:** `docs/ARQUITETURA_IA.md`
+- **Contratos de API:** `docs/API_CONTRACT.md`
+- **Setup de testes:** `frontend/vite.config.ts`, `frontend/package.json`, `frontend/src/setupTests.ts`
+- **Prompt Merge Figma:** Seção 3 deste manual
+- **Prompt QA (Gemini):** Seção 4 deste manual
+
+> Siga estas orquestrações para manter o monorepo sincronizado, testável e pronto para evoluções rápidas guiadas por IA.
