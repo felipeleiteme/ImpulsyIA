@@ -21,14 +21,14 @@ Para habilitar este fluxo, duas configurações são necessárias:
     ```bash
     npm install -D vitest @testing-library/react @testing-library/jest-dom jsdom
     ```
-2.  **Configurar o `vite.config.ts`**:
+2.  **Configurar o `vite.config.ts`:**
     Adicionar `/// <reference types="vitest" />` no topo e o bloco `test: { ... }`.
 3.  **Criar Setup de Testes:**
     Criar o arquivo `frontend/src/setupTests.ts` com o conteúdo: `import '@testing-library/jest-dom';`
-4.  **Adicionar Script ao `package.json`**:
+4.  **Adicionar Script ao `package.json`:**
     Adicionar `"test": "vitest"` à seção `scripts`.
 
-### 2.2. Configurar a "Quarentena" do Figma
+### 2.2. Configurar a "Quarentena" do Figma (AÇÃO PENDENTE)
 
 1.  Abrir o arquivo `.gitignore` na raiz do projeto.
 2.  Adicionar a seguinte linha ao final:
@@ -43,8 +43,8 @@ Este fluxo é usado quando o design de um componente *existente* é alterado no 
 
 1.  **PO (Humano):** Pede ao Figma Maker o "changelog" (lista de arquivos alterados).
 2.  **PO (Humano):** Baixa o ZIP e descompacta seu conteúdo na pasta `_figma_update/` (a "quarentena").
-3.  **PO (Humano):** Executa o **Prompt do Codex CLI (Local)** para fazer o merge cirúrgico.
-4.  **Vigia (Auto):** PO roda `npm test` na pasta `frontend/` para garantir que a UI atualizada não quebrou nenhuma regra de negócio (Ver Fluxo 3).
+3.  **PO (Humano):** Executa o **Prompt do Codex CLI (Local)** (template abaixo) para fazer o merge cirúrgico.
+4.  **Vigia (Auto):** PO roda `npm test` na pasta `frontend/` para garantir que a UI atualizada não quebrou nenhuma regra de negócio (Ver Fluxo 4).
 5.  **PO (Humano):** Commita as mudanças no Git.
 
 ---
@@ -107,7 +107,68 @@ SAÍDA 2 (Código de Teste): O código de teste completo (Vitest + React Testing
 
 ---
 
-## 5. Estratégia de Testes (A Rede de Segurança)
+## 5. Fluxo de Trabalho 3: DevOps de Prompt (Infraestrutura)
+
+Este fluxo transforma o código em um app "deployável", gerando a infraestrutura como código (IaC) e o pipeline de deploy.
+
+1.  **Geração dos Artefatos (IA):** O PO usa um prompt de "DevOps Sênior" para instruir a IA a gerar os seguintes arquivos (com base na infraestrutura alvo, ex: Oracle Cloud):
+    * `backend/Dockerfile`: Containeriza a API FastAPI.
+    * `frontend/Dockerfile`: Containeriza o app Vite/React e o serve com Nginx.
+    * `frontend/nginx.conf`: Configuração do Nginx para servir os arquivos estáticos e fazer o proxy reverso de `/api` para `http://backend:8000`.
+    * `docker-compose.yml`: Orquestra os serviços `frontend` e `backend` para testes locais e deploy.
+    * `.github/workflows/deploy-oci.yml`: Pipeline de CI/CD para o GitHub Actions que faz o deploy automático na Oracle Cloud Infrastructure (OCI).
+
+2.  **Teste de Fumaça (Local):**
+    * Antes de configurar a nuvem, o PO deve rodar `docker-compose up --build` na raiz do projeto.
+    * Isso constrói as imagens e sobe os contêineres localmente.
+    * O PO deve acessar `http://localhost:3000` e validar que o app funciona (incluindo as chamadas de API para o backend).
+
+3.  **Configuração de Deploy (Manual - 1 Vez):**
+    * **Na Oracle Cloud (OCI):**
+        * Criar dois repositórios no Container Registry (OCIR) (ex: `impulsyia/backend`, `impulsyia/frontend`).
+        * Gerar um `Auth Token` (será o `OCI_TOKEN`).
+        * Na Instância Compute: Instalar Docker, Docker Compose e clonar o repositório Git (ex: em `/home/ubuntu/impulsyia`).
+    * **No GitHub Secrets:**
+        * Preencher `OCI_USER`, `OCI_TOKEN`, `OCI_REGISTRY_URL`.
+        * Preencher `OCI_SSH_HOST`, `OCI_SSH_USER`, `OCI_SSH_KEY` (chave privada).
+        * Preencher `REMOTE_APP_DIR` (caminho do app na instância, ex: `/home/ubuntu/impulsyia`).
+
+4.  **Deploy Contínuo (Automático):**
+    * Qualquer `git push` para a branch `main` agora dispara o workflow `.github/workflows/deploy-oci.yml`.
+    * O workflow constrói as imagens, envia ao OCIR, conecta-se via SSH à instância Oracle e executa `docker compose pull && docker compose up -d` para atualizar a aplicação no ar.
+
+### 5.1. Executor Local (Docker Compose)
+
+Use este checklist sempre que precisar recriar o ambiente local com contêineres.
+
+1. **Build e subida:**  
+   ```bash
+   docker-compose up --build -d
+   ```
+   Constrói as imagens (`impulsyia/backend`, `impulsyia/frontend`) e sobe os containers `impulsyia-backend-1` e `impulsyia-frontend-1`.
+
+2. **Checar status:**  
+   ```bash
+   docker-compose ps
+   ```
+   Confirme ambos como `Up` e as portas mapeadas (`8000->8000`, `3000->80`).
+
+3. **Smoke tests:**  
+   ```bash
+   curl http://localhost:8000/
+   curl http://localhost:3000/api/agents/
+   ```
+   O primeiro deve retornar `{"status":"ok","message":"ImpulsyIA API is running"}`. O segundo garante que o Nginx em `frontend/nginx.conf` está roteando `/api` para o backend.
+
+4. **Testar interface:** Abra `http://localhost:3000` no navegador. Um 404 em `http://localhost:3000/api/` é esperado (não há rota na raiz).
+
+5. **Encerrar ambiente:**  
+   ```bash
+   docker-compose down
+   ```
+   Remove containers e a rede criada.
+
+## 6. Estratégia de Testes (A Rede de Segurança)
 
 Não vamos parar o projeto para criar testes para todo o código legado. Usaremos uma abordagem híbrida:
 
@@ -126,4 +187,4 @@ Não vamos parar o projeto para criar testes para todo o código legado. Usaremo
     * Rodar `npm test` para ver o teste passar (GREEN).
     * Implementar sua nova feature ou correção de bug (o teste vai quebrar - RED).
     * Ajustar o teste para refletir o novo comportamento (GREEN).
-    * Committed o código e o teste. (Você deixou o local mais limpo do que encontrou).
+    * Committar o código e o teste. (Você deixou o local mais limpo do que encontrou).

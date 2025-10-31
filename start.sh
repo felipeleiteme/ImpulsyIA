@@ -12,6 +12,28 @@ if [[ ! -d "frontend" ]] || [[ ! -d "backend" ]]; then
   exit 1
 fi
 
+# Garantir dependências do backend
+echo "🧰 Verificando dependências do backend..."
+pushd backend > /dev/null
+if ! python3 -c "import uvicorn" >/dev/null 2>&1; then
+  if [[ -f requirements.txt ]]; then
+    echo "📦 Instalando dependências do backend (requirements.txt)..."
+    python3 -m pip install -r requirements.txt
+  else
+    echo "⚠️  Aviso: requirements.txt não encontrado; continue apenas se já instalou as dependências manualmente."
+  fi
+fi
+popd > /dev/null
+
+# Garantir dependências do frontend
+echo "🧰 Verificando dependências do frontend..."
+pushd frontend > /dev/null
+if [[ ! -x node_modules/.bin/vite ]]; then
+  echo "📦 Instalando dependências do frontend (npm install)..."
+  npm install
+fi
+popd > /dev/null
+
 # Função para matar processos em uma porta específica
 kill_port() {
   PORT=$1

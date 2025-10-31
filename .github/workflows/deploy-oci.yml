@@ -1,0 +1,67 @@
+name: Deploy to OCI
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: ${{ secrets.OCI_REGISTRY_URL }}
+  BACKEND_IMAGE_NAME: impulsyia/backend
+  FRONTEND_IMAGE_NAME: impulsyia/frontend
+  REMOTE_APP_DIR: /home/opc/impulsyia
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare image references
+        run: |
+          echo "BACKEND_IMAGE=${REGISTRY}/${BACKEND_IMAGE_NAME}" >> $GITHUB_ENV
+          echo "FRONTEND_IMAGE=${REGISTRY}/${FRONTEND_IMAGE_NAME}" >> $GITHUB_ENV
+
+      - name: Log in to OCIR
+        run: |
+          echo "${{ secrets.OCI_TOKEN }}" | docker login "${REGISTRY}" --username "${{ secrets.OCI_USER }}" --password-stdin
+
+      - name: Build and push backend image
+        run: |
+          docker build -t "${BACKEND_IMAGE}:${GITHUB_SHA}" -t "${BACKEND_IMAGE}:latest" -f backend/Dockerfile backend
+          docker push "${BACKEND_IMAGE}:${GITHUB_SHA}"
+          docker push "${BACKEND_IMAGE}:latest"
+
+      - name: Build and push frontend image
+        run: |
+          docker build -t "${FRONTEND_IMAGE}:${GITHUB_SHA}" -t "${FRONTEND_IMAGE}:latest" -f frontend/Dockerfile frontend
+          docker push "${FRONTEND_IMAGE}:${GITHUB_SHA}"
+          docker push "${FRONTEND_IMAGE}:latest"
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.OCI_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.OCI_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy to OCI Compute
+        run: |
+          ssh "${{ secrets.OCI_SSH_USER }}@${{ secrets.OCI_SSH_HOST }}" <<EOF
+set -euo pipefail
+
+export REGISTRY="${REGISTRY}"
+export BACKEND_IMAGE="${BACKEND_IMAGE}:latest"
+export FRONTEND_IMAGE="${FRONTEND_IMAGE}:latest"
+
+printf '%s' "${{ secrets.OCI_TOKEN }}" | docker login "\${REGISTRY}" --username "${{ secrets.OCI_USER }}" --password-stdin
+
+cd "${REMOTE_APP_DIR}"
+
+export BACKEND_IMAGE
+export FRONTEND_IMAGE
+
+docker compose pull
+docker compose up -d --remove-orphans
+EOF

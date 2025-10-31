@@ -55,6 +55,7 @@ backend/.venv/
 frontend/node_modules/
 frontend/build/
 frontend/.vite/
+frontend/.npm-cache/
 frontend/coverage/
 frontend/.env
 frontend/.env.local
@@ -76,3 +77,4 @@ temp/
 
 # Pasta temporária para atualizações do Figma ("Quarentena")
 _figma_update/
+.npm-cache/
