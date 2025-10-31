@@ -10,7 +10,8 @@ Documento vivo do projeto. Atualize sempre após alterações estruturais, integ
 - Experiência centrada em 7 agentes de IA, com prompts definidos no backend e estado de conversa mantido no frontend.
 - Autenticação e perfil: **Supabase Auth**; tokens Supabase são obrigatórios nas rotas protegidas.
 - IA/LLM: modelo **Qwen Plus** (DashScope) acessado por endpoint compatível com OpenAI.
-- Execução local: script `./start.sh` levanta backend (porta 8000) e frontend (porta 3000 com proxy `/api`).
+- Execução local: script `./start.sh` instala dependências faltantes, levanta backend (porta 8000 por padrão) e frontend (porta 3000 com proxy `/api`), respeitando `BACKEND_HOST`/`BACKEND_PORT`.
+- Infraestrutura como código: Dockerfiles para frontend/backend, `docker-compose.yml` para ambientes locais e `deploy-oci.yml` para CI/CD em Oracle Cloud.
 
 Fluxo macro:
 ```
@@ -42,6 +43,11 @@ ImpulsyIA/
 ├── docs/                        # Documentação (este arquivo, initialization...)
 ├── start.sh                     # Script que sobe backend+frontend
 ├── backend.log / frontend.log   # Logs produzidos por start.sh
+├── docker-compose.yml           # Orquestra backend e frontend via Docker
+├── backend/Dockerfile           # Empacotamento da API FastAPI
+├── frontend/Dockerfile          # Build estático e server Nginx
+├── frontend/nginx.conf          # Proxy reverso para /api durante deploy containerizado
+├── .github/workflows/deploy-oci.yml # Pipeline de deploy contínuo
 └── README.md                    # Guia rápido
 ```
 
@@ -85,6 +91,9 @@ Requisitos de ambiente:
 - **Front controla jornada** via estado `journeyStarted`: usuário permanece na tela hero pós-login até enviar mensagem.
 - **Proxy dev** (`frontend/vite.config.ts`): roteia `/api` para `http://localhost:8000`, evitando CORS durante desenvolvimento.
 - **Supabase como verdade de sessão**: listener `supabase.auth.onAuthStateChange` mantém UI em sincronia.
+- **start.sh resiliente**: instala dependências Python/npm sob demanda e reinicia serviços garantindo logs separados.
+- **Configuração de host parametrizável**: backend aceita `BACKEND_HOST`/`BACKEND_PORT`, permitindo contornar restrições de bind em ambientes protegidos.
+- **Pipeline container-first**: Dockerfiles e `docker-compose.yml` padronizam builds locais/prod; `deploy-oci.yml` automatiza push para Oracle Cloud.
 
 ---
 
@@ -96,10 +105,13 @@ SUPABASE_JWT_SECRET="<jwt_secret_do_supabase>"
 DASHSCOPE_API_KEY="<api_key_dashscope>"
 QWEN_MODEL_NAME="qwen-plus"
 QWEN_BASE_URL="https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+BACKEND_HOST="0.0.0.0"  # opcional; ajustar para 127.0.0.1 em ambientes que bloqueiam bind wildcard
+BACKEND_PORT="8000"     # opcional; útil para rodar múltiplas instâncias
 ```
 
 - **Onde obter**: o `SUPABASE_JWT_SECRET` fica em *Supabase → Settings → API → JWT Secret*; a `DASHSCOPE_API_KEY` é criada no console DashScope (Alibaba Cloud) em *API Keys/Applications*. Guarde fora do repositório.
 - Após preencher manualmente o `.env`, **não execute novamente** `cp .env.example .env`, pois isso sobrescreve os segredos.
+- `BACKEND_HOST`/`BACKEND_PORT` são lidos por `backend/src/main.py`; altere-os se precisar forçar bind em `127.0.0.1` ou porta alternativa.
 
 ### Frontend (`frontend/.env`)
 ```
@@ -122,6 +134,11 @@ VITE_SUPABASE_ANON_KEY="<anon_key>"
 # Frontend → http://localhost:3000 (ou próxima porta livre)
 ```
 
+Observações:
+- O script tenta `python3 -m pip install -r backend/requirements.txt` e `npm install` automaticamente se detectar dependências faltantes.
+- Logs continuam em `backend.log`/`frontend.log`; consulte-os se o terminal não exibir erros.
+- Exporte `BACKEND_HOST`/`BACKEND_PORT` antes de rodar o script caso precise usar outra porta ou hostname (ex.: `BACKEND_HOST=127.0.0.1 ./start.sh`).
+
 ### Opção B: Manual (dois terminais)
 ```bash
 # Terminal 1 – backend
@@ -135,6 +152,19 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### Opção C: Docker Compose
+Requer Docker e Docker Compose instalados localmente.
+```bash
+docker-compose up --build -d
+docker-compose ps    # verifica containers
+```
+
+- As imagens geradas são `impulsyia/backend` e `impulsyia/frontend`; os serviços sobem nas portas `8000` e `3000`.
+- Smoke tests rápidos:
+  - `curl http://localhost:8000/`
+  - `curl http://localhost:3000/api/agents/`
+- Encerre com `docker-compose down` para desligar containers e rede.
 
 ### Testes / Builds
 - Frontend: `npm run build` gera artefatos em `frontend/build/`.
@@ -232,6 +262,7 @@ Fonte da verdade entre as interações do frontend (React) e a API do backend (F
 - **Diagnóstico**: erros DashScope aparecem como `RuntimeError` no backend. Verifique conectividade com `curl -I https://dashscope-intl.aliyuncs.com/compatible-mode/v1`.
 - **CORS**: desenvolvimento liberado para `*`; restringir em produção.
 - **Dependências externas**: Supabase (auth/email), DashScope (LLM), potencial Mercadopago (webhook placeholder).
+- **CI/CD**: workflow `deploy-oci.yml` (GitHub Actions) constrói/push imagens para OCIR e aplica `docker compose up -d` na instância Oracle via SSH.
 
 ---
 
@@ -252,6 +283,7 @@ Fonte da verdade entre as interações do frontend (React) e a API do backend (F
 - **Mar/2025** – Imports absolutos no backend e criação de `QwenClient`, evitando erros de import e centralizando integração com DashScope.
 - **Mar/2025** – Prompts dos agentes migrados para arquivos dedicados; documentação revisada com setup detalhado, contratos de API e passos de operação.
 - **Abr/2025** – Frontend sincronizado com layout refinado da pasta “Tela Inicial do App de IA”: novo componente `Sidebar` reutilizável, busca com padding ajustado, seções colapsáveis fechadas por padrão ao abrir o menu e eliminação do botão redundante “Nova Conversa”.
+- **Abr/2025** – Adoção de pipeline container-first: Dockerfiles para backend/frontend, `docker-compose.yml`, Nginx custom e GitHub Actions `deploy-oci.yml` para deploy contínuo na Oracle Cloud.
 - **Abr/2025** – Ambiente de testes do frontend padronizado com Vitest + Testing Library; script `npm run test` disponível e setup global documentado.
 
 > Para detalhes finos, consulte o histórico do Git (`git log`) ou PRs correspondentes.
